@@ -1,0 +1,180 @@
+:root{
+  --escuro: #2B2B2B;
+  --escuro-suave: #3A3A3A;
+  --claro: #FFFFFF;
+  --dourado: #F0B429;
+  --verde: #2E4E3F;
+  --azul-globo: #3E4C82;
+  --texto-claro: #F2F2F2;
+  --texto-suave: #B9B9B9;
+  --vermelho-erro: #E4A199;
+}
+
+*{ box-sizing: border-box; }
+
+html, body, #root{
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--texto-claro);
+  background: var(--claro);
+}
+
+.tela{
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ---------- Lado claro (logo) ---------- */
+.lado-claro{
+  background: var(--claro);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.logo-bloco{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.logo-texto{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+}
+
+.logo-texto span{
+  font-size: 34px;
+  font-weight: 800;
+  color: #1A1A1A;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Lado escuro (formulário) ---------- */
+.lado-escuro{
+  background: var(--escuro);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.form-container{
+  width: 100%;
+  max-width: 340px;
+}
+
+.form-container h2{
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.35;
+  margin: 0 0 36px 0;
+  color: var(--texto-claro);
+}
+
+.alerta-erro{
+  font-size: 13.5px;
+  background: rgba(228, 161, 153, 0.12);
+  border: 1px solid var(--vermelho-erro);
+  color: var(--vermelho-erro);
+  padding: 10px 12px;
+  margin-bottom: 20px;
+}
+
+.campo{ margin-bottom: 22px; }
+
+.campo label{
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--texto-claro);
+  margin-bottom: 8px;
+}
+
+.campo input{
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  border: none;
+  border-radius: 2px;
+  background: #FFFFFF;
+  color: #1A1A1A;
+}
+
+.campo input::placeholder{
+  color: #9A9A9A;
+}
+
+.campo input:focus{
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dourado);
+}
+
+.botao-wrapper{
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+.botao-entrar{
+  padding: 11px 40px;
+  background: #FFFFFF;
+  color: #1A1A1A;
+  border: none;
+  border-radius: 2px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.botao-entrar:hover{ background: #EDEDED; }
+.botao-entrar:disabled{ opacity: 0.6; cursor: default; }
+
+/* ---------- Painel pós-login ---------- */
+.painel-tela{
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--claro);
+  color: #1A1A1A;
+}
+
+.painel-caixa{
+  max-width: 480px;
+  background: #fff;
+  border: 1px solid #E0E0E0;
+  padding: 32px;
+}
+
+.painel-caixa h1{ font-size: 20px; font-weight: 600; margin-top: 0; }
+.painel-caixa button{
+  padding: 9px 16px;
+  background: var(--escuro);
+  color: #fff;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* ---------- Responsivo (empilha: logo em cima, formulário embaixo) ---------- */
+@media (max-width: 820px){
+  .tela{ grid-template-columns: 1fr; }
+  .lado-claro{ padding: 32px 24px 16px; }
+  .lado-escuro{ padding: 24px 24px 40px; }
+  .logo-bloco svg{ width: 130px; height: 130px; }
+  .logo-texto span{ font-size: 26px; }
+  .form-container h2{ font-size: 18px; text-align: center; margin-bottom: 24px; }
+}
