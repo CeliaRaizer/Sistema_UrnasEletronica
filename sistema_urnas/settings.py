@@ -129,6 +129,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    # limita requisições anônimas (as telas de campo não exigem login)
+    'DEFAULT_THROTTLE_RATES': {'anon': '120/min'},
 }
 
 # CORS - libera o front-end React (rodando em outra porta) a chamar essa API

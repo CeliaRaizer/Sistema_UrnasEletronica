@@ -73,3 +73,19 @@ export function importarPlanilha(token, arquivo, municipio) {
   if (municipio) form.append("municipio", municipio);
   return chamar(token, "/importar/", { method: "POST", body: form });
 }
+
+export const importarLocais = (token, arquivo) => {
+  const form = new FormData();
+  form.append("arquivo", arquivo);
+  return chamar(token, "/importar-locais/", { method: "POST", body: form });
+};
+
+export const getSecoes = (token) => chamar(token, "/secoes/");
+
+/** Carga da urna: vincula o patrimônio a uma seção (ou marca como contingência). */
+export const associarUrna = (token, corpo) =>
+  chamar(token, "/urnas/associar/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(corpo),
+  });

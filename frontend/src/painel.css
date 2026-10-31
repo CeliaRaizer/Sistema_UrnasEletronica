@@ -87,3 +87,30 @@ td small{ display: block; color: #777; font-size: 12.5px; margin-top: 2px; }
 .menu-marca .logo-texto{ display: none; }
 .app select, .app input[type=file]{ font-weight: 400; }
 .menu-marca .logo-bloco svg{ width: 44px; height: 44px; }
+
+/* Cadastro de urnas */
+.progresso{ font-size: 13.5px; color: #444; min-width: 220px; align-self: flex-end; }
+.progresso strong{ font-size: 15px; }
+.progresso .barra{ margin-top: 6px; height: 8px; }
+.alerta-ok{ background: #E3EFE8; border: 1px solid var(--verde); color: #1E3A2D; padding: 10px 14px; margin-bottom: 18px; font-size: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.alerta-erro-claro .botao-sec{ margin-left: 8px; padding: 5px 12px; }
+.carga{ background: #fff; border: 1px solid #E0E0DC; border-left: 4px solid var(--dourado); padding: 20px 22px; margin-bottom: 22px; display: grid; grid-template-columns: auto 1fr; gap: 18px 28px; max-width: 820px; }
+.carga-seção{ display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 96px; padding: 6px 14px; background: var(--escuro); color: #fff; }
+.carga-seção span, .carga-seção small{ font-size: 12.5px; color: var(--texto-suave); }
+.carga-seção strong{ font-size: 40px; line-height: 1.1; }
+.carga dl{ margin: 0; display: grid; gap: 8px; align-content: center; }
+.carga dl div{ display: grid; grid-template-columns: 120px 1fr; gap: 8px; font-size: 14.5px; }
+.carga dt{ color: #666; }
+.carga dd{ margin: 0; font-weight: 600; }
+.carga-form{ grid-column: 1 / -1; display: flex; flex-direction: column; gap: 14px; }
+.carga-form label{ display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #444; }
+.carga-form input{ font: inherit; font-size: 20px; padding: 10px 12px; border: 1px solid #BDBDBD; border-radius: 2px; letter-spacing: .02em; }
+.carga-acoes{ display: flex; gap: 12px; flex-wrap: wrap; }
+.scanner{ grid-column: 1 / -1; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.scanner video{ width: 100%; max-width: 420px; background: #000; }
+.scanner-erro{ margin: 0; color: #8E2A1F; font-size: 14px; }
+.lista-secoes{ max-width: 980px; }
+.linha-atual td{ background: #FBF6E6; }
+.botao-link{ background: none; border: none; color: #2F3E75; text-decoration: underline; font: inherit; font-size: 13.5px; cursor: pointer; padding: 0; }
+.avisos{ margin: 0 0 16px; padding-left: 20px; font-size: 14px; line-height: 1.6; max-height: 220px; overflow: auto; }
+@media (max-width: 820px){ .carga{ grid-template-columns: 1fr; } .carga-seção{ align-items: flex-start; } }

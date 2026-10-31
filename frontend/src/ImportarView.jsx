@@ -1,27 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import { getLocais, importarPlanilha } from "./api";
+import { useRef, useState } from "react";
+import { importarLocais } from "./api";
 
-export default function ImportarView({ token, onVerPainel }) {
-  const [municipios, setMunicipios] = useState([]);
-  const [municipio, setMunicipio] = useState("");
+export default function ImportarView({ token, onIrCadastro }) {
   const [arquivo, setArquivo] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [erro, setErro] = useState("");
   const inputRef = useRef(null);
 
-  useEffect(() => {
-    getLocais().then(setMunicipios).catch(() => {});
-  }, []);
-
   async function enviar(e) {
     e.preventDefault();
     if (!arquivo) return;
-    setEnviando(true);
-    setErro("");
-    setResultado(null);
+    setEnviando(true); setErro(""); setResultado(null);
     try {
-      setResultado(await importarPlanilha(token, arquivo, municipio));
+      setResultado(await importarLocais(token, arquivo));
       setArquivo(null);
       if (inputRef.current) inputRef.current.value = "";
     } catch (err) {
@@ -33,26 +25,17 @@ export default function ImportarView({ token, onVerPainel }) {
 
   return (
     <>
-      <header className="cabecalho"><h1>Importar planilha de rotas</h1></header>
+      <header className="cabecalho"><h1>Importar planilha de locais e rotas</h1></header>
       <p className="ajuda">
-        Envie a planilha exportada do Sistema Rotas (.xlsx ou .csv) com patrimônio da urna,
-        seção, zona, local de votação e responsável pela distribuição. Importar de novo a
-        mesma planilha atualiza os dados sem duplicar urnas.
+        Envie a planilha .xlsx com os locais de votação e uma aba por rota. O sistema lê os municípios,
+        os locais, as seções de cada local e a rota de cada seção. Importar de novo atualiza os dados sem duplicar.
       </p>
 
       <form className="importar" onSubmit={enviar}>
         <label className="arquivo">
           <span>Arquivo da planilha</span>
-          <input ref={inputRef} type="file" accept=".xlsx,.xlsm,.csv"
+          <input ref={inputRef} type="file" accept=".xlsx,.xlsm"
                  onChange={(e) => setArquivo(e.target.files[0] || null)} />
-        </label>
-        <label>
-          Município
-          <select value={municipio} onChange={(e) => setMunicipio(e.target.value)}>
-            <option value="">Usar a coluna de município da planilha</option>
-            {municipios.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-          </select>
-          <small>Escolha um município só se a planilha não tiver essa coluna.</small>
         </label>
         <button className="botao-pri" disabled={!arquivo || enviando}>
           {enviando ? "Importando…" : "Importar planilha"}
@@ -65,23 +48,17 @@ export default function ImportarView({ token, onVerPainel }) {
         <section className="resultado" aria-live="polite">
           <h2>Importação concluída</h2>
           <p>
-            <strong>{resultado.criadas}</strong> urnas novas e{" "}
-            <strong>{resultado.atualizadas}</strong> atualizadas.
-            {resultado.erros.length > 0 && <> <strong>{resultado.erros.length}</strong> linhas não foram importadas.</>}
+            <strong>{resultado.locais}</strong> locais de votação, <strong>{resultado.secoes}</strong> seções
+            e <strong>{resultado.rotas}</strong> rotas.
+            {resultado.avisos.length === 0 && " Nenhum problema encontrado."}
           </p>
-          {resultado.erros.length > 0 && (
-            <div className="tabela-rolagem">
-              <table>
-                <thead><tr><th>Linha da planilha</th><th>Problema</th></tr></thead>
-                <tbody>
-                  {resultado.erros.map((er) => (
-                    <tr key={er.linha}><td>{er.linha}</td><td>{er.motivo}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {resultado.avisos.length > 0 && (
+            <>
+              <p><strong>{resultado.avisos.length}</strong> avisos para conferir na planilha:</p>
+              <ul className="avisos">{resultado.avisos.map((a, i) => <li key={i}>{a}</li>)}</ul>
+            </>
           )}
-          <button className="botao-sec" onClick={onVerPainel}>Ver no acompanhamento</button>
+          <button className="botao-pri" onClick={onIrCadastro}>Cadastrar as urnas</button>
         </section>
       )}
     </>

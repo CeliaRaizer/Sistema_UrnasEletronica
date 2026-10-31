@@ -2,10 +2,12 @@ import { useState } from "react";
 import JusticaEleitoralLogo from "./JusticaEleitoralLogo";
 import AcompanhamentoView from "./AcompanhamentoView";
 import ImportarView from "./ImportarView";
+import CadastroUrnasView from "./CadastroUrnasView";
 import "./painel.css";
 
 const ABAS = [
   { id: "acompanhamento", rotulo: "Acompanhamento" },
+  { id: "cadastro", rotulo: "Cadastro de urnas" },
   { id: "importar", rotulo: "Importar planilha" },
 ];
 
@@ -38,11 +40,9 @@ export default function PainelPage({ usuario, token, onLogout }) {
       </aside>
 
       <main className="conteudo">
-        {aba === "acompanhamento" ? (
-          <AcompanhamentoView token={token} onIrImportar={() => setAba("importar")} />
-        ) : (
-          <ImportarView token={token} onVerPainel={() => setAba("acompanhamento")} />
-        )}
+        {aba === "acompanhamento" && <AcompanhamentoView token={token} onIrImportar={() => setAba("importar")} />}
+        {aba === "cadastro" && <CadastroUrnasView token={token} onIrImportar={() => setAba("importar")} />}
+        {aba === "importar" && <ImportarView token={token} onIrCadastro={() => setAba("cadastro")} />}
       </main>
     </div>
   );

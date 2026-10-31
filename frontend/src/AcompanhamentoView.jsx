@@ -14,7 +14,7 @@ const formatarData = (iso) =>
 
 export default function AcompanhamentoView({ token, onIrImportar }) {
   const [municipios, setMunicipios] = useState([]);
-  const [filtros, setFiltros] = useState({ municipio: "", local: "", status: "" });
+  const [filtros, setFiltros] = useState({ municipio: "", local: "", rota: "", status: "" });
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState("");
   const [atualizadoEm, setAtualizadoEm] = useState(null);
@@ -50,7 +50,7 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
 
   const r = dados?.resumo;
   const pct = (n) => (r && r.total ? (n / r.total) * 100 : 0);
-  const semFiltro = !filtros.municipio && !filtros.local && !filtros.status;
+  const semFiltro = !filtros.municipio && !filtros.local && !filtros.rota && !filtros.status;
 
   return (
     <>
@@ -94,6 +94,12 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
             {locais.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
           </select>
         </label>
+        <label>Rota
+          <select value={filtros.rota} onChange={mudar("rota")}>
+            <option value="">Todas</option>
+            {(dados?.rotas || []).map((n) => <option key={n} value={n}>Rota {n}</option>)}
+          </select>
+        </label>
         <label>Situação
           <select value={filtros.status} onChange={mudar("status")}>
             <option value="">Todas</option>
@@ -107,7 +113,7 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
           {semFiltro ? (
             <>
               <p>Nenhuma urna cadastrada ainda.</p>
-              <button className="botao-pri" onClick={onIrImportar}>Importar planilha de rotas</button>
+              <button className="botao-pri" onClick={onIrImportar}>Importar planilha de locais e rotas</button>
             </>
           ) : (
             <p>Nenhuma urna encontrada com esses filtros.</p>
@@ -119,7 +125,7 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
             <table>
               <thead>
                 <tr>
-                  <th>Patrimônio</th><th>Local de votação</th><th>Seção</th>
+                  <th>Patrimônio</th><th>Local de votação</th><th>Seção</th><th>Rota</th>
                   <th>Distribuição</th><th>Recebimento</th><th>Situação</th>
                 </tr>
               </thead>
@@ -132,6 +138,7 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
                       <small>{e.municipio}</small>
                     </td>
                     <td>{e.secao ? `${e.secao} (zona ${e.zona})` : "—"}</td>
+                    <td>{e.rota ?? "—"}</td>
                     <td>{e.responsavel_distribuicao || "—"}</td>
                     <td>
                       {e.recebido_por || "—"}
