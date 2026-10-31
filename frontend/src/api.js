@@ -39,3 +39,37 @@ export async function logout(token) {
     headers: { Authorization: `Token ${token}` },
   });
 }
+
+/** Chamada autenticada genérica; lança Error com a mensagem da API. */
+async function chamar(token, caminho, opcoes = {}) {
+  const resposta = await fetch(`${API_URL}${caminho}`, {
+    ...opcoes,
+    headers: { Authorization: `Token ${token}`, ...(opcoes.headers || {}) },
+  });
+  const dados = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) throw new Error(dados.detail || "Não foi possível concluir a operação.");
+  return dados;
+}
+
+/** Municípios e locais (endpoint público, usado nos filtros). */
+export async function getLocais() {
+  const resposta = await fetch(`${API_URL}/locais/`);
+  if (!resposta.ok) throw new Error("Não foi possível carregar os locais.");
+  return resposta.json();
+}
+
+/** Painel de acompanhamento. filtros: { municipio, local, status } */
+export function getPainel(token, filtros = {}) {
+  const params = new URLSearchParams(
+    Object.entries(filtros).filter(([, v]) => v)
+  ).toString();
+  return chamar(token, `/painel/${params ? `?${params}` : ""}`);
+}
+
+/** Envia a planilha de rotas (.xlsx/.csv). municipio é opcional. */
+export function importarPlanilha(token, arquivo, municipio) {
+  const form = new FormData();
+  form.append("arquivo", arquivo);
+  if (municipio) form.append("municipio", municipio);
+  return chamar(token, "/importar/", { method: "POST", body: form });
+}

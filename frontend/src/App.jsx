@@ -47,5 +47,5 @@ export default function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  return <PainelPage usuario={usuario} onLogout={handleLogout} />;
+  return <PainelPage usuario={usuario} token={token} onLogout={handleLogout} />;
 }
