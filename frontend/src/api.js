@@ -89,3 +89,9 @@ export const associarUrna = (token, corpo) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(corpo),
   });
+
+export const importarPresidentes = (token, arquivo) => {
+  const form = new FormData();
+  form.append("arquivo", arquivo);
+  return chamar(token, "/importar-presidentes/", { method: "POST", body: form });
+};

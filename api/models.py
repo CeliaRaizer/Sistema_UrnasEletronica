@@ -25,6 +25,13 @@ class LocalVotacao(models.Model):
     bairro = models.CharField(max_length=120, blank=True)
     endereco = models.CharField(max_length=200, blank=True)
     cep = models.CharField(max_length=10, blank=True)
+    # Presidente de prédio: coordena o local inteiro e recebe todas as urnas dele.
+    presidente = models.CharField(max_length=120, blank=True)
+    presidente_telefone = models.CharField(max_length=40, blank=True)
+    # Cronograma da entrega (vem da planilha de presidentes / Sistema de Rotas)
+    data_entrega = models.DateField(null=True, blank=True)
+    hora_saida = models.TimeField(null=True, blank=True)      # saída (partida) do cartório
+    hora_prevista = models.TimeField(null=True, blank=True)   # chegada prevista neste local
 
     class Meta:
         ordering = ["municipio__nome", "nome"]
@@ -38,6 +45,10 @@ class LocalVotacao(models.Model):
 
 class Rota(models.Model):
     numero = models.PositiveSmallIntegerField(unique=True)
+    # Quem faz a distribuição (como no formulário "Controle de Distribuição")
+    responsavel = models.CharField(max_length=200, blank=True, help_text="Ex.: Celia / Daniel José Cantelli")
+    placa = models.CharField(max_length=15, blank=True)
+    celular = models.CharField(max_length=60, blank=True)
 
     class Meta:
         ordering = ["numero"]

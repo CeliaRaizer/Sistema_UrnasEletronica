@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -8,8 +10,21 @@ from rest_framework.views import APIView
 
 from .importer import ErroImportacao, importar
 from .importer_locais import importar_locais_rotas
+from .importer_presidentes import importar_presidentes
 from .models import (Entrega, LocalVotacao, Municipio, Ocorrencia, Rota, Secao, Urna,
                      normalizar_patrimonio)
+
+
+def _hm(t):
+    return t.strftime("%H:%M") if t else None
+
+
+def _atraso_min(entrega, local):
+    """Minutos entre o horário previsto e a confirmação (positivo = atrasou)."""
+    if not (entrega.confirmado_em and local and local.data_entrega and local.hora_prevista):
+        return None
+    previsto = timezone.make_aware(datetime.combine(local.data_entrega, local.hora_prevista))
+    return round((entrega.confirmado_em - previsto).total_seconds() / 60)
 
 
 def erro(msg, status=400):
@@ -148,15 +163,27 @@ class PainelView(APIView):
         )
         if p.get("status"):
             qs = qs.filter(status=p["status"])
+        entregas = []
+        for e in qs.order_by("urna__patrimonio"):
+            sec = e.urna.secao
+            local, rota = (sec.local if sec else None), (sec.rota if sec else None)
+            entregas.append({
+                **dados_urna(e.urna),
+                "responsavel_distribuicao": e.responsavel_distribuicao or (rota.responsavel if rota else ""),
+                "placa": rota.placa if rota else "",
+                "presidente": local.presidente if local else "",
+                "presidente_telefone": local.presidente_telefone if local else "",
+                "data_entrega": local.data_entrega.isoformat() if local and local.data_entrega else None,
+                "hora_saida": _hm(local.hora_saida) if local else None,
+                "hora_prevista": _hm(local.hora_prevista) if local else None,
+                "atraso_min": _atraso_min(e, local),
+                "confirmado_em": e.confirmado_em,
+                "ocorrencias": e.ocorrencias.count(),
+            })
         return Response({
             "resumo": resumo,
             "rotas": list(Rota.objects.values_list("numero", flat=True)),
-            "entregas": [{
-                **dados_urna(e.urna),
-                "responsavel_distribuicao": e.responsavel_distribuicao,
-                "confirmado_em": e.confirmado_em,
-                "ocorrencias": e.ocorrencias.count(),
-            } for e in qs.order_by("urna__patrimonio")],
+            "entregas": entregas,
         })
 
 
@@ -200,6 +227,20 @@ class ImportarLocaisView(APIView):
             return erro(str(e))
 
 
+class ImportarPresidentesView(APIView):
+    """POST /api/importar-presidentes/ (multipart: arquivo) -- planilha só com os presidentes de prédio."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        arquivo = request.FILES.get("arquivo")
+        if arquivo is None:
+            return erro("Envie o arquivo no campo 'arquivo'.")
+        try:
+            return Response(importar_presidentes(arquivo))
+        except ErroImportacao as e:
+            return erro(str(e))
+
+
 class SecoesView(APIView):
     """GET /api/secoes/ -- todas as seções com local, município, rota e urna vinculada."""
     permission_classes = [IsAuthenticated]
@@ -210,6 +251,7 @@ class SecoesView(APIView):
         return Response([{
             "id": x.id, "zona": x.zona, "numero": x.numero,
             "local": x.local.nome, "local_id": x.local_id, "area": x.local.area,
+            "presidente": x.local.presidente,
             "municipio": x.local.municipio.nome, "municipio_id": x.local.municipio_id,
             "rota": x.rota.numero if x.rota else None,
             "patrimonio": next((u.patrimonio for u in x.urnas.all()), None),

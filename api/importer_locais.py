@@ -45,7 +45,7 @@ def importar_locais_rotas(arquivo):
         cab = [str(c or "") for c in linhas[0]]
         cols = {k: _achar(cab, *p) for k, p in {
             "municipio": ("municipio",), "local": ("local",), "secoes": ("secoes", "secao"),
-            "zona": ("zona",), "bairro": ("bairro",), "cep": ("cep",), "endereco": ("endereco",)}.items()}
+            "zona": ("zona",), "presidente": ("presidente", "administrador"), "bairro": ("bairro",), "cep": ("cep",), "endereco": ("endereco",)}.items()}
         if all(cols[k] is not None for k in ("municipio", "local", "secoes", "zona")):
             aba_locais = (linhas[1:], cols)
             break
@@ -73,9 +73,10 @@ def importar_locais_rotas(arquivo):
                 raise ErroImportacao(f"Linha {n} da aba de locais: faltam local, zona ou seções.")
             pega = lambda k: str(r[c[k]] or "").strip() if c[k] is not None else ""
             area = "interior" if re.search(r"\b(estrada|interior)\b", norm(pega("endereco"))) else "urbano"
-            local, _ = LocalVotacao.objects.update_or_create(
-                municipio=municipio, nome=nome_local,
-                defaults={"area": area, "endereco": pega("endereco"), "bairro": pega("bairro"), "cep": pega("cep")})
+            dados = {"area": area, "endereco": pega("endereco"), "bairro": pega("bairro"), "cep": pega("cep")}
+            if pega("presidente"):  # só atualiza se a planilha trouxer o nome (não apaga o que já existe)
+                dados["presidente"] = pega("presidente")[:120]
+            local, _ = LocalVotacao.objects.update_or_create(municipio=municipio, nome=nome_local, defaults=dados)
             resumo["locais"] += 1
             for num in numeros:
                 secoes_db[num], _ = Secao.objects.update_or_create(zona=zona, numero=num, defaults={"local": local})

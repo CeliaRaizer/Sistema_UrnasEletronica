@@ -114,3 +114,11 @@ td small{ display: block; color: #777; font-size: 12.5px; margin-top: 2px; }
 .botao-link{ background: none; border: none; color: #2F3E75; text-decoration: underline; font: inherit; font-size: 13.5px; cursor: pointer; padding: 0; }
 .avisos{ margin: 0 0 16px; padding-left: 20px; font-size: 14px; line-height: 1.6; max-height: 220px; overflow: auto; }
 @media (max-width: 820px){ .carga{ grid-template-columns: 1fr; } .carga-seção{ align-items: flex-start; } }
+
+/* Importação em blocos */
+.bloco-importar{ margin-bottom: 34px; }
+.bloco-importar h2{ font-size: 17px; margin: 0 0 6px; }
+.resultado h3{ font-size: 16px; margin: 0 0 8px; }
+.resultado details{ margin-top: 8px; font-size: 14px; }
+.resultado summary{ cursor: pointer; color: #2F3E75; }
+.atraso{ color: #B23B2E !important; font-weight: 600; }

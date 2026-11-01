@@ -158,3 +158,136 @@ class ImportarLocaisTests(APITestCase):
         r = self.admin.get("/api/painel/", {"rota": 7})
         self.assertEqual([e["patrimonio"] for e in r.data["entregas"]], ["300"])
         self.assertEqual(r.data["rotas"], list(range(1, 9)))
+
+
+# ---------- Presidentes de prédio ----------
+import tempfile
+from openpyxl import Workbook, load_workbook as _lw
+from .models import LocalVotacao
+
+
+def _xlsx(linhas, nome="p.xlsx"):
+    wb = Workbook(); ws = wb.active
+    for l in linhas:
+        ws.append(l)
+    f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); wb.save(f.name)
+    return f.name
+
+
+class PresidentesTests(ImportarLocaisTests):
+    def enviar_para(self, caminho, rota):
+        with open(caminho, "rb") as f:
+            return self.admin.post(rota, {"arquivo": f}, format="multipart")
+
+    def test_coluna_na_planilha_principal(self):
+        wb = _lw(PLANILHA_REAL); ws = wb.worksheets[0]
+        ws.cell(row=1, column=9, value="Presidente de prédio")
+        ws.cell(row=2, column=9, value="Maria Souza")  # Pinheiro Preto
+        f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); wb.save(f.name)
+        self.assertEqual(self.enviar_para(f.name, "/api/importar-locais/").status_code, 200)
+        self.assertEqual(LocalVotacao.objects.get(municipio__nome="Pinheiro Preto").presidente, "Maria Souza")
+        # reimportar a planilha original (sem a coluna) não apaga o nome
+        self.enviar()
+        self.assertEqual(LocalVotacao.objects.get(municipio__nome="Pinheiro Preto").presidente, "Maria Souza")
+
+    def test_planilha_so_de_presidentes_com_nomes_abreviados(self):
+        self.enviar()
+        caminho = _xlsx([
+            ["Município", "Local de votação", "Presidente"],
+            ["Pinheiro Preto", "EEB PROFESSORA MAURA SENNA PEREIRA", "Maria Souza"],      # abreviado, como nas abas de rota
+            ["Treze Tilias", "EEB MUNICIPAL IRMÃ FILOMENA RABELO", "João Lima"],            # sem acento no município
+            ["Tangará", "PAVILHÃO DA CAPELA DE MARARI", "Ana Paula"],
+            ["Tangará", "Escola Inexistente", "Fulano"],                                    # não existe
+        ])
+        r = self.enviar_para(caminho, "/api/importar-presidentes/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["atualizados"], 3)
+        self.assertEqual(len(r.data["erros"]), 1)
+        self.assertIn("Escola Inexistente", r.data["erros"][0]["motivo"])
+        self.assertEqual(LocalVotacao.objects.get(nome__contains="MAURA").presidente, "Maria Souza")
+        self.assertEqual(len(r.data["locais_sem_presidente"]), 14)
+
+    def test_identifica_o_local_pela_secao(self):
+        self.enviar()
+        caminho = _xlsx([["Seção", "Presidente de prédio"], [55, "Pedro Alves"]])  # seção 55 = Escola Isolada Três Barras
+        r = self.enviar_para(caminho, "/api/importar-presidentes/")
+        self.assertEqual(r.data["atualizados"], 1)
+        self.assertEqual(LocalVotacao.objects.get(nome__contains="TRÊS BARRAS").presidente, "Pedro Alves")
+
+    def test_todos_os_nomes_das_abas_de_rota_sao_reconhecidos(self):
+        """Os nomes abreviados das abas de rota (usados no dia a dia) devem achar o local."""
+        self.enviar()
+        wb = _lw(PLANILHA_REAL)
+        nomes = set()
+        for ws in wb.worksheets[1:]:
+            cab = [str(c.value or "") for c in ws[1]]
+            ci = next(i for i, x in enumerate(cab) if x.lower().startswith("local"))
+            for r in ws.iter_rows(min_row=2, values_only=True):
+                if r[ci]:
+                    nomes.add(r[ci])
+        caminho = _xlsx([["Local de votação", "Presidente"]] + [[n, f"Pres {i}"] for i, n in enumerate(sorted(nomes))])
+        r = self.enviar_para(caminho, "/api/importar-presidentes/")
+        self.assertEqual(r.data["erros"], [], r.data["erros"])
+
+    def test_exige_login_e_colunas(self):
+        self.assertEqual(APIClient().post("/api/importar-presidentes/").status_code, 401)
+        self.enviar()
+        r = self.enviar_para(_xlsx([["Nome", "Telefone"], ["x", "y"]]), "/api/importar-presidentes/")
+        self.assertEqual(r.status_code, 400)
+
+    def test_painel_e_secoes_mostram_o_presidente(self):
+        self.enviar()
+        self.enviar_para(_xlsx([["Local de votação", "Presidente"], ["EEB PROFESSORA MAURA SENNA PEREIRA", "Maria Souza"]]), "/api/importar-presidentes/")
+        self.admin.post("/api/urnas/associar/", {"patrimonio": "1", "zona": 47, "secao": 1})
+        self.assertEqual(self.admin.get("/api/painel/").data["entregas"][0]["presidente"], "Maria Souza")
+        self.assertEqual(next(x for x in self.admin.get("/api/secoes/").data if x["numero"] == 1)["presidente"], "Maria Souza")
+        # o presidente não aparece nos endpoints públicos
+        self.assertNotIn("Maria Souza", str(APIClient().get("/api/urnas/consulta/", {"patrimonio": "1"}).data))
+
+
+# ---------- Cronograma (data, saída, previsto) e responsável da rota ----------
+import datetime as _dt
+from django.utils import timezone as _tz
+
+
+class CronogramaTests(PresidentesTests):
+    def test_le_data_saida_previsto_telefone_em_varios_formatos(self):
+        self.enviar()
+        caminho = _xlsx([
+            ["Administrador de prédio", "Telefone(s)", "Local de votação", "Data de entrega", "Horário de saída", "Horário previsto de entrega"],
+            ["Denize Cecatto", "+554935621392", "EEB PROFESSORA MAURA SENNA PEREIRA", _dt.date(2026, 10, 24), _dt.time(14, 30), _dt.time(14, 50)],
+            ["Joao Lima", "49 99999-0000", "EEB MUNICIPAL IRMÃ FILOMENA RABELO", "24/10/2026", "14h30", "15:10"],
+            ["Ana Paula", None, "PAVILHÃO DA CAPELA DE MARARI", "data ruim", 0.625, "xx"],   # 0.625 = 15:00
+        ])
+        r = self.enviar_para(caminho, "/api/importar-presidentes/")
+        self.assertEqual((r.status_code, r.data["atualizados"]), (200, 3))
+        self.assertEqual(r.data["colunas"], ["telefone", "data", "saida", "previsto"])
+        a = LocalVotacao.objects.get(nome__contains="MAURA")
+        self.assertEqual((a.presidente, a.presidente_telefone, a.data_entrega, a.hora_saida, a.hora_prevista),
+                         ("Denize Cecatto", "+554935621392", _dt.date(2026, 10, 24), _dt.time(14, 30), _dt.time(14, 50)))
+        b = LocalVotacao.objects.get(nome__contains="FILOMENA")
+        self.assertEqual((b.data_entrega, b.hora_saida, b.hora_prevista), (_dt.date(2026, 10, 24), _dt.time(14, 30), _dt.time(15, 10)))
+        c = LocalVotacao.objects.get(nome__contains="MARARI")
+        self.assertEqual((c.data_entrega, c.hora_saida, c.hora_prevista), (None, _dt.time(15, 0), None))
+        self.assertEqual(len(r.data["avisos"]), 2)  # data ruim e horário "xx"
+
+    def test_painel_mostra_cronograma_responsavel_e_atraso(self):
+        self.enviar()
+        rota = Rota.objects.get(numero=7)
+        rota.responsavel, rota.placa = "Celia / Daniel", "BCI8G97"; rota.save()
+        agora = _tz.localtime()
+        previsto = agora - _dt.timedelta(minutes=20)
+        LocalVotacao.objects.filter(nome__contains="MAURA").update(
+            data_entrega=previsto.date(), hora_prevista=previsto.time().replace(second=0, microsecond=0), hora_saida=_dt.time(14, 30))
+        self.admin.post("/api/urnas/associar/", {"patrimonio": "1", "zona": 47, "secao": 1})
+        APIClient().post("/api/confirmar/", {"patrimonio": "1", "nome": "Denize"})
+        e = self.admin.get("/api/painel/").data["entregas"][0]
+        self.assertEqual((e["responsavel_distribuicao"], e["placa"], e["hora_saida"]), ("Celia / Daniel", "BCI8G97", "14:30"))
+        self.assertIn(e["atraso_min"], range(19, 22))
+
+    def test_coluna_administrador_na_planilha_principal(self):
+        wb = _lw(PLANILHA_REAL); ws = wb.worksheets[0]
+        ws.cell(row=1, column=9, value="Administrador de prédio"); ws.cell(row=2, column=9, value="Denize")
+        f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); wb.save(f.name)
+        self.enviar_para(f.name, "/api/importar-locais/")
+        self.assertEqual(LocalVotacao.objects.get(municipio__nome="Pinheiro Preto").presidente, "Denize")

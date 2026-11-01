@@ -16,6 +16,7 @@ urlpatterns = [
     path("ocorrencias/lista/", v.OcorrenciasListaView.as_view()),
     path("importar/", v.ImportarPlanilhaView.as_view()),
     path("importar-locais/", v.ImportarLocaisView.as_view()),
+    path("importar-presidentes/", v.ImportarPresidentesView.as_view()),
     path("secoes/", v.SecoesView.as_view()),
     path("urnas/associar/", v.AssociarUrnaView.as_view()),
 ]

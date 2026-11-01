@@ -4,7 +4,7 @@ from .models import Municipio, LocalVotacao, Rota, Secao, Urna, Entrega, Ocorren
 
 @admin.register(LocalVotacao)
 class LocalAdmin(admin.ModelAdmin):
-    list_display = ("nome", "municipio", "area")
+    list_display = ("nome", "municipio", "area", "presidente", "data_entrega", "hora_saida", "hora_prevista")
     list_filter = ("municipio", "area")
     search_fields = ("nome",)
 
@@ -29,5 +29,8 @@ class EntregaAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Municipio)
-admin.site.register(Rota)
+@admin.register(Rota)
+class RotaAdmin(admin.ModelAdmin):
+    list_display = ("numero", "responsavel", "placa", "celular")
+
 admin.site.register(Ocorrencia)

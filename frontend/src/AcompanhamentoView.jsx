@@ -7,6 +7,8 @@ const STATUS = {
   pendencia: "Pendência",
 };
 
+const diaMes = (iso) => (iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : "");
+
 const formatarData = (iso) =>
   iso
     ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
@@ -126,7 +128,7 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
               <thead>
                 <tr>
                   <th>Patrimônio</th><th>Local de votação</th><th>Seção</th><th>Rota</th>
-                  <th>Distribuição</th><th>Recebimento</th><th>Situação</th>
+                  <th>Previsto</th><th>Distribuição</th><th>Recebimento</th><th>Situação</th>
                 </tr>
               </thead>
               <tbody>
@@ -136,13 +138,24 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
                     <td>
                       {e.local ? e.local.nome : <em>Contingência</em>}
                       <small>{e.municipio}</small>
+                      {e.presidente && (
+                        <small>Presidente: {e.presidente}{e.presidente_telefone && ` · ${e.presidente_telefone}`}</small>
+                      )}
                     </td>
                     <td>{e.secao ? `${e.secao} (zona ${e.zona})` : "—"}</td>
                     <td>{e.rota ?? "—"}</td>
-                    <td>{e.responsavel_distribuicao || "—"}</td>
+                    <td>
+                      {e.hora_prevista ? `${diaMes(e.data_entrega)} ${e.hora_prevista}`.trim() : "—"}
+                      {e.hora_saida && <small>saída {e.hora_saida}</small>}
+                    </td>
+                    <td>
+                      {e.responsavel_distribuicao || "—"}
+                      {e.placa && <small>Placa {e.placa}</small>}
+                    </td>
                     <td>
                       {e.recebido_por || "—"}
                       {e.confirmado_em && <small>{formatarData(e.confirmado_em)}</small>}
+                      {e.atraso_min > 0 && <small className="atraso">{e.atraso_min} min após o previsto</small>}
                     </td>
                     <td>
                       <span className={`selo selo-${e.status}`}>{STATUS[e.status] || "—"}</span>

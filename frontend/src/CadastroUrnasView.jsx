@@ -111,6 +111,7 @@ export default function CadastroUrnasView({ token, onIrImportar }) {
           <dl>
             <div><dt>Local de votação</dt><dd>{atual.local}</dd></div>
             <div><dt>Rota</dt><dd>{atual.rota ? `Rota ${atual.rota}` : "Sem rota"}</dd></div>
+            {atual.presidente && <div><dt>Presidente</dt><dd>{atual.presidente}</dd></div>}
             {atual.patrimonio && <div><dt>Urna atual</dt><dd className="mono">{atual.patrimonio}</dd></div>}
           </dl>
           <form onSubmit={(e) => { e.preventDefault(); salvar(); }} className="carga-form">

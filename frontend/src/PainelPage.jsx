@@ -8,7 +8,7 @@ import "./painel.css";
 const ABAS = [
   { id: "acompanhamento", rotulo: "Acompanhamento" },
   { id: "cadastro", rotulo: "Cadastro de urnas" },
-  { id: "importar", rotulo: "Importar planilha" },
+  { id: "importar", rotulo: "Importar planilhas" },
 ];
 
 export default function PainelPage({ usuario, token, onLogout }) {
