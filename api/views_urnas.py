@@ -251,9 +251,15 @@ class SecoesView(APIView):
         return Response([{
             "id": x.id, "zona": x.zona, "numero": x.numero,
             "local": x.local.nome, "local_id": x.local_id, "area": x.local.area,
-            "presidente": x.local.presidente,
+            "endereco": x.local.endereco, "bairro": x.local.bairro,
+            "presidente": x.local.presidente, "presidente_telefone": x.local.presidente_telefone,
+            "data_entrega": x.local.data_entrega.isoformat() if x.local.data_entrega else None,
+            "hora_saida": _hm(x.local.hora_saida), "hora_prevista": _hm(x.local.hora_prevista),
             "municipio": x.local.municipio.nome, "municipio_id": x.local.municipio_id,
             "rota": x.rota.numero if x.rota else None,
+            "rota_responsavel": x.rota.responsavel if x.rota else "",
+            "rota_placa": x.rota.placa if x.rota else "",
+            "rota_celular": x.rota.celular if x.rota else "",
             "patrimonio": next((u.patrimonio for u in x.urnas.all()), None),
         } for x in qs])
 

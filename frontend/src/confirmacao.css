@@ -1,0 +1,42 @@
+/* Tela pública de confirmação (celular em primeiro lugar) */
+.conf{ min-height: 100vh; background: #F5F5F3; color: #1A1A1A; font-size: 16px; }
+.conf-topo{ background: var(--escuro); color: #fff; display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.conf-topo .logo-texto{ display: none; }
+.conf-topo .logo-bloco svg{ width: 40px; height: 40px; }
+.conf-topo div{ display: flex; flex-direction: column; line-height: 1.25; }
+.conf-topo span{ font-size: 13px; color: var(--texto-suave); }
+.conf-corpo{ max-width: 520px; margin: 0 auto; padding: 18px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+.conf h1{ font-size: 20px; margin: 0; }
+.conf h2{ font-size: 15px; margin: 0 0 8px; }
+.conf-cartao{ background: #fff; border: 1px solid #E0E0DC; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.conf label{ display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 14px; color: #444; }
+.conf input, .conf select, .conf textarea{ font: inherit; font-size: 16px; font-weight: 400; padding: 13px 12px; border: 1px solid #BDBDBD; border-radius: 3px; background: #fff; color: #1A1A1A; width: 100%; box-sizing: border-box; }
+.conf input:focus-visible, .conf select:focus-visible, .conf textarea:focus-visible, .conf button:focus-visible{ outline: 3px solid var(--dourado); outline-offset: 1px; }
+.conf-acoes{ display: flex; gap: 10px; flex-wrap: wrap; }
+.conf-acoes button{ flex: 1 1 140px; }
+.conf-pri, .conf-sec{ font: inherit; font-size: 16px; min-height: 50px; padding: 12px 16px; border-radius: 3px; cursor: pointer; }
+.conf-pri{ background: var(--escuro); color: #fff; border: 1px solid var(--escuro); font-weight: 600; }
+.conf-pri:disabled{ opacity: .45; cursor: default; }
+.conf-perigo{ background: #B23B2E; border-color: #B23B2E; }
+.conf-sec{ background: #fff; color: #1A1A1A; border: 1px solid #9A9A9A; }
+.conf-link{ background: none; border: none; color: #2F3E75; text-decoration: underline; font: inherit; font-size: 15px; cursor: pointer; padding: 6px 0; text-align: left; }
+.conf-aviso{ padding: 12px 14px; font-size: 15px; line-height: 1.45; border: 1px solid; }
+.conf-ok{ background: #E3EFE8; border-color: var(--verde); color: #1E3A2D; }
+.conf-erro{ background: #FBEAE7; border-color: #B23B2E; color: #8E2A1F; }
+.conf-alerta{ background: #FBF1D6; border-color: #C79A1E; color: #6B4E08; }
+.conf-local{ background: #fff; border: 1px solid #E0E0DC; border-left: 4px solid var(--dourado); padding: 12px 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.conf-local div{ display: flex; flex-direction: column; gap: 2px; }
+.conf-local span{ font-size: 12.5px; color: #666; }
+.conf-urna{ display: flex; gap: 16px; align-items: stretch; }
+.conf-secao{ background: var(--escuro); color: #fff; min-width: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 12px; }
+.conf-secao span{ font-size: 12.5px; color: var(--texto-suave); }
+.conf-secao strong{ font-size: 36px; line-height: 1.1; }
+.conf-urna dl{ margin: 0; display: grid; gap: 8px; align-content: center; min-width: 0; }
+.conf-urna dt{ font-size: 12.5px; color: #666; }
+.conf-urna dd{ margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.conf-problema{ display: flex; flex-direction: column; gap: 14px; border-top: 1px solid #ECECE8; padding-top: 14px; }
+.conf-feitas{ background: #fff; border: 1px solid #E0E0DC; padding: 14px 18px; }
+.conf-feitas ul{ margin: 0; padding-left: 18px; line-height: 1.7; font-size: 15px; }
+.conf .scanner{ align-items: stretch; }
+.conf .scanner video{ max-width: 100%; }
+.conf .scanner .botao-sec{ font: inherit; min-height: 46px; background: #fff; border: 1px solid #9A9A9A; border-radius: 3px; cursor: pointer; }

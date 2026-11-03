@@ -3,12 +3,18 @@ import JusticaEleitoralLogo from "./JusticaEleitoralLogo";
 import AcompanhamentoView from "./AcompanhamentoView";
 import ImportarView from "./ImportarView";
 import CadastroUrnasView from "./CadastroUrnasView";
+import LinkConfirmacaoView from "./LinkConfirmacaoView";
+import RotasView from "./RotasView";
+import LocaisView from "./LocaisView";
 import "./painel.css";
 
 const ABAS = [
   { id: "acompanhamento", rotulo: "Acompanhamento" },
+  { id: "rotas", rotulo: "Rotas" },
+  { id: "locais", rotulo: "Locais de votação" },
   { id: "cadastro", rotulo: "Cadastro de urnas" },
   { id: "importar", rotulo: "Importar planilhas" },
+  { id: "link", rotulo: "Link de confirmação" },
 ];
 
 export default function PainelPage({ usuario, token, onLogout }) {
@@ -41,7 +47,10 @@ export default function PainelPage({ usuario, token, onLogout }) {
 
       <main className="conteudo">
         {aba === "acompanhamento" && <AcompanhamentoView token={token} onIrImportar={() => setAba("importar")} />}
+        {aba === "rotas" && <RotasView token={token} onIrImportar={() => setAba("importar")} />}
+        {aba === "locais" && <LocaisView token={token} onIrImportar={() => setAba("importar")} />}
         {aba === "cadastro" && <CadastroUrnasView token={token} onIrImportar={() => setAba("importar")} />}
+        {aba === "link" && <LinkConfirmacaoView />}
         {aba === "importar" && <ImportarView token={token} onIrCadastro={() => setAba("cadastro")} />}
       </main>
     </div>

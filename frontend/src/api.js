@@ -95,3 +95,28 @@ export const importarPresidentes = (token, arquivo) => {
   form.append("arquivo", arquivo);
   return chamar(token, "/importar-presidentes/", { method: "POST", body: form });
 };
+
+/** Chamadas públicas (tela de confirmação do campo, sem login). */
+async function publico(caminho, opcoes = {}) {
+  let resposta;
+  try {
+    resposta = await fetch(`${API_URL}${caminho}`, opcoes);
+  } catch {
+    throw new Error("Sem conexão com o servidor. Verifique a internet e tente de novo.");
+  }
+  const dados = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) throw new Error(dados.detail || "Não foi possível concluir. Tente de novo.");
+  return dados;
+}
+
+const enviarJson = (caminho, corpo) =>
+  publico(caminho, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(corpo),
+  });
+
+export const consultarUrna = (patrimonio) =>
+  publico(`/urnas/consulta/?patrimonio=${encodeURIComponent(patrimonio)}`);
+export const confirmarEntrega = (corpo) => enviarJson("/confirmar/", corpo);
+export const registrarOcorrencia = (corpo) => enviarJson("/ocorrencias/", corpo);

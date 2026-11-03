@@ -139,6 +139,8 @@ class ImportarLocaisTests(APITestCase):
         lista = self.admin.get("/api/secoes/").data
         self.assertEqual(len(lista), 74)
         self.assertIsNone(next(x for x in lista if x["numero"] == 51)["patrimonio"])
+        campos = {"endereco", "bairro", "presidente_telefone", "data_entrega", "hora_saida", "hora_prevista", "rota_responsavel", "rota_placa", "rota_celular"}
+        self.assertTrue(campos <= set(lista[0]))
         # vincula, depois reaparece na lista com rota
         r = self.admin.post("/api/urnas/associar/", {"patrimonio": "100", "zona": 47, "secao": 51})
         self.assertEqual((r.status_code, r.data["rota"]), (201, 1))
