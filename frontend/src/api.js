@@ -120,3 +120,12 @@ export const consultarUrna = (patrimonio) =>
   publico(`/urnas/consulta/?patrimonio=${encodeURIComponent(patrimonio)}`);
 export const confirmarEntrega = (corpo) => enviarJson("/confirmar/", corpo);
 export const registrarOcorrencia = (corpo) => enviarJson("/ocorrencias/", corpo);
+
+const patch = (token, caminho, corpo) =>
+  chamar(token, caminho, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(corpo),
+  });
+export const editarLocal = (token, id, dados) => patch(token, `/locais/${id}/`, dados);
+export const editarRota = (token, numero, dados) => patch(token, `/rotas/${numero}/`, dados);

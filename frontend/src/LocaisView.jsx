@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSecoes } from "./api";
+import { FormLocal } from "./FormEdicao";
 import { agrupar, Chips, contar, Filtros, FILTROS_VAZIOS, filtrarSecoes, Presidente, quando } from "./estrutura";
 
 export default function LocaisView({ token, onIrImportar }) {
   const [secoes, setSecoes] = useState(null);
   const [erro, setErro] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_VAZIOS);
+  const [editando, setEditando] = useState(null); // id do local em edição
 
   const carregar = useCallback(() => getSecoes(token).then(setSecoes).catch((e) => setErro(e.message)), [token]);
   useEffect(() => { carregar(); }, [carregar]);
@@ -64,10 +66,18 @@ export default function LocaisView({ token, onIrImportar }) {
                       </div>
                     </header>
                     {(l.endereco || l.bairro) && <p className="local-end">{[l.endereco, l.bairro].filter(Boolean).join(" · ")}</p>}
-                    <dl>
-                      <div><dt>Presidente</dt><dd><Presidente s={l} /></dd></div>
-                      {quando(l) && <div><dt>Previsto</dt><dd>{quando(l)}{l.hora_saida && <small>saída {l.hora_saida}</small>}</dd></div>}
-                    </dl>
+                    {editando === l.local_id ? (
+                      <FormLocal token={token} dados={l} onCancelar={() => setEditando(null)}
+                                 onSalvo={async () => { await carregar(); setEditando(null); }} />
+                    ) : (
+                      <>
+                        <dl>
+                          <div><dt>Presidente</dt><dd><Presidente s={l} /></dd></div>
+                          {quando(l) && <div><dt>Previsto</dt><dd>{quando(l)}{l.hora_saida && <small>saída {l.hora_saida}</small>}</dd></div>}
+                        </dl>
+                        <button className="botao-link" onClick={() => setEditando(l.local_id)}>Editar presidente e horários</button>
+                      </>
+                    )}
                     <Chips secoes={ss} />
                   </article>
                 );

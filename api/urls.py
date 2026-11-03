@@ -12,6 +12,8 @@ urlpatterns = [
     path("confirmar/", v.ConfirmarEntregaView.as_view()),
     path("ocorrencias/", v.OcorrenciaView.as_view()),
     # cartório (com login)
+    path("locais/<int:pk>/", v.EditarLocalView.as_view()),
+    path("rotas/<int:numero>/", v.EditarRotaView.as_view()),
     path("painel/", v.PainelView.as_view()),
     path("ocorrencias/lista/", v.OcorrenciasListaView.as_view()),
     path("importar/", v.ImportarPlanilhaView.as_view()),

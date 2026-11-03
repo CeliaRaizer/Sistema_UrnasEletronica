@@ -167,3 +167,16 @@ td small{ display: block; color: #777; font-size: 12.5px; margin-top: 2px; }
 .local dd{ margin: 0; }
 .local dd small{ display: block; color: #777; font-size: 12.5px; }
 .selo{ white-space: nowrap; }
+
+/* Formulários de edição em linha */
+.form-edicao{ display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px 16px; background: #FBF9F1; border: 1px solid #E6DFC4; padding: 14px 16px; }
+.form-edicao label{ display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: #444; }
+.form-edicao input{ font: inherit; font-size: 14px; font-weight: 400; padding: 8px 10px; border: 1px solid #BDBDBD; border-radius: 2px; background: #fff; color: #1A1A1A; min-width: 0; }
+.form-edicao input:focus-visible{ outline: 2px solid var(--dourado); outline-offset: 1px; }
+.form-edicao .larga{ grid-column: 1 / -1; }
+.form-acoes{ display: flex; gap: 10px; justify-content: flex-end; }
+.form-edicao .alerta-erro-claro{ margin: 0; }
+.rota-form{ padding: 12px 18px; border-bottom: 1px solid #ECECE8; }
+.rota-resp .botao-link{ margin-left: 12px; }
+.linha-form td{ background: #FBF9F1; padding: 10px 14px; }
+.local > .botao-link{ align-self: flex-start; }

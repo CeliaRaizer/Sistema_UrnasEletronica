@@ -293,3 +293,54 @@ class CronogramaTests(PresidentesTests):
         f = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False); wb.save(f.name)
         self.enviar_para(f.name, "/api/importar-locais/")
         self.assertEqual(LocalVotacao.objects.get(municipio__nome="Pinheiro Preto").presidente, "Denize")
+
+
+# ---------- Edição de local e de rota pelo sistema ----------
+class EdicaoTests(APITestCase):
+    def setUp(self):
+        user = User.objects.create_user("cartorio", password="x")
+        self.admin = APIClient()
+        self.admin.credentials(HTTP_AUTHORIZATION="Token " + Token.objects.create(user=user).key)
+        with open(PLANILHA_REAL, "rb") as f:
+            self.admin.post("/api/importar-locais/", {"arquivo": f}, format="multipart")
+        self.local = LocalVotacao.objects.get(nome__contains="MAURA")
+
+    def patch(self, dados, id=None):
+        return self.admin.patch(f"/api/locais/{id or self.local.id}/", dados, format="json")
+
+    def test_edita_presidente_telefone_e_horarios(self):
+        r = self.patch({"presidente": "Denize Cecatto", "presidente_telefone": "+55 49 3562-1392",
+                        "data_entrega": "2026-10-24", "hora_saida": "14:30", "hora_prevista": "14:50"})
+        self.assertEqual((r.status_code, r.data["hora_prevista"], r.data["data_entrega"]), (200, "14:50", "2026-10-24"))
+        self.local.refresh_from_db()
+        self.assertEqual((self.local.presidente, self.local.hora_saida), ("Denize Cecatto", _dt.time(14, 30)))
+
+    def test_so_muda_o_que_foi_enviado_e_vazio_limpa(self):
+        self.patch({"presidente": "Maria", "hora_prevista": "14:50"})
+        self.patch({"presidente_telefone": "123"})
+        self.local.refresh_from_db()
+        self.assertEqual((self.local.presidente, self.local.hora_prevista), ("Maria", _dt.time(14, 50)))
+        self.patch({"hora_prevista": "", "presidente": ""})
+        self.local.refresh_from_db()
+        self.assertEqual((self.local.presidente, self.local.hora_prevista, self.local.presidente_telefone), ("", None, "123"))
+
+    def test_valores_invalidos_e_acesso(self):
+        for dados in ({"hora_saida": "25:99"}, {"hora_prevista": "tarde"}, {"data_entrega": "2026-13-45"}, {"data_entrega": "ontem"}):
+            self.assertEqual(self.patch(dados).status_code, 400, dados)
+        self.assertEqual(self.patch({"presidente": "x"}, id=99999).status_code, 404)
+        self.assertEqual(APIClient().patch(f"/api/locais/{self.local.id}/", {"presidente": "x"}, format="json").status_code, 401)
+
+    def test_edicao_aparece_no_painel_e_nas_secoes(self):
+        self.patch({"presidente": "Denize", "hora_prevista": "14:50", "data_entrega": "2026-10-24"})
+        self.admin.post("/api/urnas/associar/", {"patrimonio": "1", "zona": 47, "secao": 1})
+        e = self.admin.get("/api/painel/").data["entregas"][0]
+        self.assertEqual((e["presidente"], e["hora_prevista"]), ("Denize", "14:50"))
+        self.assertEqual(next(x for x in self.admin.get("/api/secoes/").data if x["numero"] == 1)["presidente"], "Denize")
+
+    def test_edita_responsavel_da_rota(self):
+        r = self.admin.patch("/api/rotas/7/", {"responsavel": "Celia / Daniel", "placa": "BCI8G97", "celular": "49 93300-1500"}, format="json")
+        self.assertEqual((r.status_code, r.data["placa"]), (200, "BCI8G97"))
+        self.assertEqual(Rota.objects.get(numero=7).responsavel, "Celia / Daniel")
+        self.assertEqual(self.admin.patch("/api/rotas/99/", {"placa": "x"}, format="json").status_code, 404)
+        self.admin.patch("/api/rotas/7/", {"responsavel": "Outro"}, format="json")
+        self.assertEqual(Rota.objects.get(numero=7).placa, "BCI8G97")  # campo não enviado fica igual

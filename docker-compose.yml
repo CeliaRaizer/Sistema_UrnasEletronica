@@ -1,0 +1,35 @@
+# Uso:  cp .env.example .env   (e edite)   →   docker compose up -d --build
+# Site em http://localhost:8080
+# Celular (https temporário):  docker compose --profile celular up -d
+#                              docker compose logs tunel     (procure https://....trycloudflare.com)
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_DEBUG: "0"
+      DJANGO_BEHIND_PROXY: "1"
+    volumes:
+      - dados:/dados
+    expose:
+      - "8000"
+
+  nginx:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "${PORTA:-8080}:80"
+
+  tunel:
+    image: cloudflare/cloudflared:latest
+    profiles: ["celular"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://nginx:80
+    depends_on:
+      - nginx
+
+volumes:
+  dados:

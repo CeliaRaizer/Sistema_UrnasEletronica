@@ -10,7 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +23,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-m6%i!2f889v2zg1=co^9pgij()8tkj$8fwl!!2*thkjg$l2se)'
+_CHAVE_DE_DESENVOLVIMENTO = 'django-insecure-chave-so-para-desenvolvimento-local'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', _CHAVE_DE_DESENVOLVIMENTO)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = []
+if not DEBUG and SECRET_KEY == _CHAVE_DE_DESENVOLVIMENTO:
+    raise ImproperlyConfigured('Defina DJANGO_SECRET_KEY quando DJANGO_DEBUG=0.')
+
+def _lista(nome):
+    return [x.strip() for x in os.environ.get(nome, '').split(',') if x.strip()]
+
+
+# Em produção: DJANGO_ALLOWED_HOSTS=meusite.com,.trycloudflare.com
+ALLOWED_HOSTS = _lista('DJANGO_ALLOWED_HOSTS')
+# Necessário para o login do /admin/ por https: DJANGO_CSRF_TRUSTED_ORIGINS=https://meusite.com,https://*.trycloudflare.com
+CSRF_TRUSTED_ORIGINS = _lista('DJANGO_CSRF_TRUSTED_ORIGINS')
 
 
 # Application definition
@@ -45,6 +59,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # serve arquivos estáticos e o site React
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -80,7 +95,7 @@ WSGI_APPLICATION = 'sistema_urnas.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('DJANGO_DB_PATH', BASE_DIR / 'db.sqlite3'),  # no Docker fica num volume
     }
 }
 
@@ -120,6 +135,17 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Site React compilado (npm run build). Se existir, o próprio Django passa a servi-lo.
+FRONTEND_DIST = Path(os.environ.get('FRONTEND_DIST', BASE_DIR / 'frontend' / 'dist'))
+if (FRONTEND_DIST / 'index.html').exists():
+    WHITENOISE_ROOT = FRONTEND_DIST
+
+# Atrás de nginx / túnel https: confia no aviso de que a conexão original era https.
+if os.environ.get('DJANGO_BEHIND_PROXY', '0') == '1':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
 
 # Django REST Framework
 REST_FRAMEWORK = {

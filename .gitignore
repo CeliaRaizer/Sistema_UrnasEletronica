@@ -5,3 +5,10 @@ venv/
 node_modules/
 frontend/dist/
 vite.log
+
+# Segredos e dados de produção
+/.env
+staticfiles/
+
+*.sqlite3
+.vscode/

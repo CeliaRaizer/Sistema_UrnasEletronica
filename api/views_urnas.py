@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.db.models import Count, Q
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime, parse_time
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
@@ -306,3 +306,76 @@ class AssociarUrnaView(APIView):
         urna, criada = Urna.objects.update_or_create(patrimonio=patrimonio, defaults=valores)
         Entrega.objects.get_or_create(urna=urna)
         return Response(dados_urna(buscar_urna(patrimonio)), status=201 if criada else 200)
+
+
+# ---------- Edição pelo sistema (sem reimportar planilha) ----------
+
+def _valor(dados, chave, conversor, rotulo):
+    """Lê um campo opcional: vazio vira None; texto inválido levanta ValueError."""
+    bruto = str(dados.get(chave) or "").strip()
+    if not bruto:
+        return None
+    try:
+        valor = conversor(bruto)
+    except ValueError:
+        valor = None
+    if valor is None:
+        raise ValueError(f"{rotulo} inválido(a): '{bruto}'.")
+    return valor
+
+
+def dados_local(local):
+    return {
+        "id": local.id,
+        "presidente": local.presidente,
+        "presidente_telefone": local.presidente_telefone,
+        "data_entrega": local.data_entrega.isoformat() if local.data_entrega else None,
+        "hora_saida": _hm(local.hora_saida),
+        "hora_prevista": _hm(local.hora_prevista),
+    }
+
+
+class EditarLocalView(APIView):
+    """PATCH /api/locais/<id>/ -- presidente, telefone, data de entrega e horários. Só muda o que for enviado."""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        local = LocalVotacao.objects.filter(pk=pk).first()
+        if local is None:
+            return erro("Local não encontrado.", 404)
+        d, campos = request.data, []
+        for nome, limite in (("presidente", 120), ("presidente_telefone", 40)):
+            if nome in d:
+                setattr(local, nome, str(d[nome] or "").strip()[:limite])
+                campos.append(nome)
+        try:
+            for chave, conversor, rotulo in (("data_entrega", parse_date, "Data de entrega"),
+                                             ("hora_saida", parse_time, "Horário de saída"),
+                                             ("hora_prevista", parse_time, "Horário previsto")):
+                if chave in d:
+                    setattr(local, chave, _valor(d, chave, conversor, rotulo))
+                    campos.append(chave)
+        except ValueError as e:
+            return erro(str(e))
+        if campos:
+            local.save(update_fields=campos)
+        return Response(dados_local(local))
+
+
+class EditarRotaView(APIView):
+    """PATCH /api/rotas/<numero>/ -- responsável pela distribuição, placa e celular."""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, numero):
+        rota = Rota.objects.filter(numero=numero).first()
+        if rota is None:
+            return erro("Rota não encontrada.", 404)
+        campos = []
+        for nome, limite in (("responsavel", 200), ("placa", 15), ("celular", 60)):
+            if nome in request.data:
+                setattr(rota, nome, str(request.data[nome] or "").strip()[:limite])
+                campos.append(nome)
+        if campos:
+            rota.save(update_fields=campos)
+        return Response({"numero": rota.numero, "responsavel": rota.responsavel,
+                         "placa": rota.placa, "celular": rota.celular})

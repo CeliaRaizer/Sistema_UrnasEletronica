@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { getSecoes } from "./api";
+import { FormLocal, FormRota } from "./FormEdicao";
 import { agrupar, Chips, contar, Filtros, FILTROS_VAZIOS, filtrarSecoes, Presidente, quando } from "./estrutura";
 
 export default function RotasView({ token, onIrImportar }) {
   const [secoes, setSecoes] = useState(null);
   const [erro, setErro] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_VAZIOS);
+  const [editando, setEditando] = useState(null); // "local-<id>" ou "rota-<n>"
+  const salvo = async () => { await carregar(); setEditando(null); };
 
   const carregar = useCallback(() => getSecoes(token).then(setSecoes).catch((e) => setErro(e.message)), [token]);
   useEffect(() => { carregar(); }, [carregar]);
@@ -55,24 +58,35 @@ export default function RotasView({ token, onIrImportar }) {
               <span className="rota-mun">{municipios}</span>
               <span className="rota-num">{nLocaisRota} {nLocaisRota === 1 ? "local" : "locais"} · {total} seções · <b>{comUrna}</b> com urna</span>
             </summary>
-            {n && (
+            {n && (editando === `rota-${n}` ? (
+              <div className="rota-form"><FormRota token={token} dados={r} onSalvo={salvo} onCancelar={() => setEditando(null)} /></div>
+            ) : (
               <p className="rota-resp">
                 <span>Responsável:</span> {r.rota_responsavel || <em className="apagado">não informado</em>}
                 {r.rota_placa && <> · Placa {r.rota_placa}</>}
                 {r.rota_celular && <> · {r.rota_celular}</>}
+                <button className="botao-link" onClick={() => setEditando(`rota-${n}`)}>Editar</button>
               </p>
-            )}
+            ))}
             <div className="tabela-rolagem">
               <table>
-                <thead><tr><th>Local de votação</th><th>Presidente de prédio</th><th>Previsto</th><th>Seções</th></tr></thead>
+                <thead><tr><th>Local de votação</th><th>Presidente de prédio</th><th>Previsto</th><th>Seções</th><th></th></tr></thead>
                 <tbody>
                   {locais.map((ss) => (
-                    <tr key={ss[0].local_id}>
-                      <td>{ss[0].local}<small>{ss[0].municipio}</small></td>
-                      <td><Presidente s={ss[0]} /></td>
-                      <td>{quando(ss[0]) ?? "—"}{ss[0].hora_saida && <small>saída {ss[0].hora_saida}</small>}</td>
-                      <td><Chips secoes={ss} /></td>
-                    </tr>
+                    <Fragment key={ss[0].local_id}>
+                      <tr>
+                        <td>{ss[0].local}<small>{ss[0].municipio}</small></td>
+                        <td><Presidente s={ss[0]} /></td>
+                        <td>{quando(ss[0]) ?? "—"}{ss[0].hora_saida && <small>saída {ss[0].hora_saida}</small>}</td>
+                        <td><Chips secoes={ss} /></td>
+                        <td><button className="botao-link" onClick={() => setEditando(`local-${ss[0].local_id}`)}>Editar</button></td>
+                      </tr>
+                      {editando === `local-${ss[0].local_id}` && (
+                        <tr className="linha-form"><td colSpan={5}>
+                          <FormLocal token={token} dados={ss[0]} onSalvo={salvo} onCancelar={() => setEditando(null)} />
+                        </td></tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
