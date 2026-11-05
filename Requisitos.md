@@ -29,7 +29,7 @@
 
 > Observação: os municípios atendidos (Ibiam, Tangará, Pinheiro Preto, Ibicaré e Treze Tílias) são um conjunto fixo e conhecido — por isso não há uma história de usuário de "cadastrar município" como funcionalidade dinâmica; os municípios já vêm pré-carregados no sistema.
 
-- **US03** — Como *servidor do cartório*, quero importar a planilha de rotas exportada do Sistema Rotas (contendo patrimônio da urna, seção, zona, local de votação e responsável pela distribuição), para carregar essas informações no sistema sem precisar recadastrá-las manualmente.
+- **US03** — Como *servidor do cartório*, quero importar a planilha de rotas exportada do Sistema Rotas, para carregar essas informações no sistema sem precisar recadastrá-las manualmente.
 - **US04** — Como *servidor do cartório*, quero associar manualmente uma urna a uma seção lendo o QR code (ou digitando o patrimônio) da urna, para cadastrar ou ajustar associações que não vieram corretamente na planilha importada, ou quando houver substituição de urna de última hora.
 - **US05** — Como *servidor do cartório*, quero que o sistema disponibilize um QR code/link genérico e fixo de acesso à tela de confirmação, para que qualquer presidente de prédio consiga abri-la sem precisar de login, independentemente do local.
 - **US06** — Como *servidor do cartório*, quero registrar as urnas de contingência disponíveis por município, para tê-las disponíveis caso uma urna titular apresente falha no dia da eleição.
