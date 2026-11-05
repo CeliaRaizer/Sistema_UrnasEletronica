@@ -4,6 +4,7 @@ import { getLocais, getPainel } from "./api";
 const STATUS = {
   entregue: "Entregue",
   em_transito: "Em trânsito",
+  aguardando: "Aguardando saída",
   pendencia: "Pendência",
 };
 
@@ -72,12 +73,14 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
             <div><strong>{r.total}</strong> urnas</div>
             <div className="n-entregue"><strong>{r.entregue}</strong> entregues</div>
             <div className="n-transito"><strong>{r.em_transito}</strong> em trânsito</div>
+            <div className="n-aguardando"><strong>{r.aguardando}</strong> aguardando saída</div>
             <div className="n-pendencia"><strong>{r.pendencia}</strong> com pendência</div>
           </div>
           <div className="barra" role="img"
-               aria-label={`${r.entregue} entregues, ${r.em_transito} em trânsito, ${r.pendencia} com pendência`}>
+               aria-label={`${r.entregue} entregues, ${r.em_transito} em trânsito, ${r.aguardando} aguardando saída, ${r.pendencia} com pendência`}>
             <span className="b-entregue" style={{ width: `${pct(r.entregue)}%` }} />
             <span className="b-transito" style={{ width: `${pct(r.em_transito)}%` }} />
+            <span className="b-aguardando" style={{ width: `${pct(r.aguardando)}%` }} />
             <span className="b-pendencia" style={{ width: `${pct(r.pendencia)}%` }} />
           </div>
         </section>
@@ -146,7 +149,7 @@ export default function AcompanhamentoView({ token, onIrImportar }) {
                     <td>{e.rota ?? "—"}</td>
                     <td>
                       {e.hora_prevista ? `${diaMes(e.data_entrega)} ${e.hora_prevista}`.trim() : "—"}
-                      {e.hora_saida && <small>saída {e.hora_saida}</small>}
+                      {e.hora_saida && <small>saída {e.data_entrega ? `${diaMes(e.data_entrega)} ` : ""}{e.hora_saida}</small>}
                     </td>
                     <td>
                       {e.responsavel_distribuicao || "—"}

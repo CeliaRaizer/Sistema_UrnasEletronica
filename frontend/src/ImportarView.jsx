@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { importarLocais, importarPresidentes } from "./api";
+import ApagarDados from "./ApagarDados";
 
 /** Cartão genérico: escolhe o arquivo, envia e mostra o resultado de cada importação. */
 function Importador({ titulo, ajuda, enviar, resultado }) {
@@ -91,6 +92,8 @@ export default function ImportarView({ token, onIrCadastro }) {
           </>
         )}
       />
+
+      <ApagarDados token={token} />
     </>
   );
 }

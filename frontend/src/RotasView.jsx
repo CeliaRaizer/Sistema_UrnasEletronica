@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { getSecoes } from "./api";
 import { FormLocal, FormRota } from "./FormEdicao";
+import { ExcluirLocal, ExcluirRota } from "./ExcluirDados";
 import { agrupar, Chips, contar, Filtros, FILTROS_VAZIOS, filtrarSecoes, Presidente, quando } from "./estrutura";
 
 export default function RotasView({ token, onIrImportar }) {
@@ -8,7 +9,13 @@ export default function RotasView({ token, onIrImportar }) {
   const [erro, setErro] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_VAZIOS);
   const [editando, setEditando] = useState(null); // "local-<id>" ou "rota-<n>"
+  const [aviso, setAviso] = useState("");
   const salvo = async () => { await carregar(); setEditando(null); };
+  const excluido = async (r) => {
+    await carregar();   // primeiro atualiza a lista, depois avisa
+    setEditando(null);
+    setAviso(`${r.detail}${r.backup ? ` Cópia de segurança salva (${r.backup}).` : ""}`);
+  };
 
   const carregar = useCallback(() => getSecoes(token).then(setSecoes).catch((e) => setErro(e.message)), [token]);
   useEffect(() => { carregar(); }, [carregar]);
@@ -39,6 +46,7 @@ export default function RotasView({ token, onIrImportar }) {
         </div>
       </header>
       {erro && <div className="alerta-erro-claro" role="alert">{erro}</div>}
+      {aviso && <div className="alerta-ok" role="status">{aviso}</div>}
       <Filtros secoes={todas} filtros={filtros} setFiltros={setFiltros} campos={["municipio", "rota"]} />
 
       {secoes && rotas.length === 0 && <div className="vazio"><p>Nenhuma seção encontrada com esses filtros.</p></div>}
@@ -66,8 +74,12 @@ export default function RotasView({ token, onIrImportar }) {
                 {r.rota_placa && <> · Placa {r.rota_placa}</>}
                 {r.rota_celular && <> · {r.rota_celular}</>}
                 <button className="botao-link" onClick={() => setEditando(`rota-${n}`)}>Editar</button>
+                <button className="botao-link perigo" onClick={() => { setAviso(""); setEditando(`excluir-rota-${n}`); }}>Excluir rota</button>
               </p>
             ))}
+            {n && editando === `excluir-rota-${n}` && (
+              <div className="rota-form"><ExcluirRota token={token} numero={n} onExcluida={excluido} onFechar={() => setEditando(null)} /></div>
+            )}
             <div className="tabela-rolagem">
               <table>
                 <thead><tr><th>Local de votação</th><th>Presidente de prédio</th><th>Previsto</th><th>Seções</th><th></th></tr></thead>
@@ -79,8 +91,16 @@ export default function RotasView({ token, onIrImportar }) {
                         <td><Presidente s={ss[0]} /></td>
                         <td>{quando(ss[0]) ?? "—"}{ss[0].hora_saida && <small>saída {ss[0].hora_saida}</small>}</td>
                         <td><Chips secoes={ss} /></td>
-                        <td><button className="botao-link" onClick={() => setEditando(`local-${ss[0].local_id}`)}>Editar</button></td>
+                        <td className="acoes-linha">
+                          <button className="botao-link" onClick={() => setEditando(`local-${ss[0].local_id}`)}>Editar</button>
+                          <button className="botao-link perigo" onClick={() => { setAviso(""); setEditando(`excluir-local-${ss[0].local_id}`); }}>Excluir</button>
+                        </td>
                       </tr>
+                      {editando === `excluir-local-${ss[0].local_id}` && (
+                        <tr className="linha-form"><td colSpan={5}>
+                          <ExcluirLocal token={token} local={ss[0]} onExcluido={excluido} onFechar={() => setEditando(null)} />
+                        </td></tr>
+                      )}
                       {editando === `local-${ss[0].local_id}` && (
                         <tr className="linha-form"><td colSpan={5}>
                           <FormLocal token={token} dados={ss[0]} onSalvo={salvo} onCancelar={() => setEditando(null)} />

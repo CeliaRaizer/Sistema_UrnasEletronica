@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from django.db.models import Count, Q
+from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -11,6 +12,8 @@ from rest_framework.views import APIView
 from .importer import ErroImportacao, importar
 from .importer_locais import importar_locais_rotas
 from .importer_presidentes import importar_presidentes
+from .manutencao import (ESCOPOS, copia_de_seguranca, excluir_local, excluir_rota,
+                         impacto_local, impacto_rota)
 from .models import (Entrega, LocalVotacao, Municipio, Ocorrencia, Rota, Secao, Urna,
                      normalizar_patrimonio)
 
@@ -25,6 +28,24 @@ def _atraso_min(entrega, local):
         return None
     previsto = timezone.make_aware(datetime.combine(local.data_entrega, local.hora_prevista))
     return round((entrega.confirmado_em - previsto).total_seconds() / 60)
+
+
+AGUARDANDO = "aguardando"
+
+
+def situacao(entrega, local, agora):
+    """
+    Situação mostrada no painel. "Entregue" e "pendência" vêm do banco. Antes de a urna ser
+    confirmada, ela só está "em trânsito" a partir da data e do horário de saída previstos do local;
+    antes disso (ou sem data/horário de saída definidos) fica "aguardando" a saída.
+    """
+    if entrega.status in (Entrega.ENTREGUE, Entrega.PENDENCIA):
+        return entrega.status
+    if local and local.data_entrega and local.hora_saida:
+        saida = timezone.make_aware(datetime.combine(local.data_entrega, local.hora_saida))
+        if agora >= saida:
+            return Entrega.EM_TRANSITO
+    return AGUARDANDO
 
 
 def erro(msg, status=400):
@@ -143,11 +164,13 @@ class OcorrenciaView(PublicoView):
 # ---------- Cartório (exige login) ----------
 
 class PainelView(APIView):
-    """GET /api/painel/?municipio=<id>&local=<id>&status=<status>"""
+    """GET /api/painel/?municipio=<id>&local=<id>&rota=<n>&status=<aguardando|em_transito|entregue|pendencia>"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = Entrega.objects.select_related("urna__secao__local__municipio", "urna__secao__rota", "urna__municipio")
+        qs = (Entrega.objects
+              .select_related("urna__secao__local__municipio", "urna__secao__rota", "urna__municipio")
+              .prefetch_related("ocorrencias"))
         p = request.query_params
         if p.get("municipio"):
             qs = qs.filter(Q(urna__secao__local__municipio_id=p["municipio"]) | Q(urna__municipio_id=p["municipio"]))
@@ -155,20 +178,14 @@ class PainelView(APIView):
             qs = qs.filter(urna__secao__local_id=p["local"])
         if p.get("rota"):
             qs = qs.filter(urna__secao__rota__numero=p["rota"])
-        resumo = qs.aggregate(
-            total=Count("id"),
-            entregue=Count("id", filter=Q(status=Entrega.ENTREGUE)),
-            em_transito=Count("id", filter=Q(status=Entrega.EM_TRANSITO)),
-            pendencia=Count("id", filter=Q(status=Entrega.PENDENCIA)),
-        )
-        if p.get("status"):
-            qs = qs.filter(status=p["status"])
+        agora = timezone.now()
         entregas = []
         for e in qs.order_by("urna__patrimonio"):
             sec = e.urna.secao
             local, rota = (sec.local if sec else None), (sec.rota if sec else None)
             entregas.append({
                 **dados_urna(e.urna),
+                "status": situacao(e, local, agora),
                 "responsavel_distribuicao": e.responsavel_distribuicao or (rota.responsavel if rota else ""),
                 "placa": rota.placa if rota else "",
                 "presidente": local.presidente if local else "",
@@ -178,8 +195,13 @@ class PainelView(APIView):
                 "hora_prevista": _hm(local.hora_prevista) if local else None,
                 "atraso_min": _atraso_min(e, local),
                 "confirmado_em": e.confirmado_em,
-                "ocorrencias": e.ocorrencias.count(),
+                "ocorrencias": len(e.ocorrencias.all()),
             })
+        resumo = {"total": len(entregas)}
+        for k in ("entregue", "em_transito", AGUARDANDO, "pendencia"):
+            resumo[k] = sum(1 for x in entregas if x["status"] == k)
+        if p.get("status"):
+            entregas = [x for x in entregas if x["status"] == p["status"]]
         return Response({
             "resumo": resumo,
             "rotas": list(Rota.objects.values_list("numero", flat=True)),
@@ -379,3 +401,80 @@ class EditarRotaView(APIView):
             rota.save(update_fields=campos)
         return Response({"numero": rota.numero, "responsavel": rota.responsavel,
                          "placa": rota.placa, "celular": rota.celular})
+
+
+class ApagarDadosView(APIView):
+    """
+    GET  /api/apagar-dados/  -> o que cada opção apagaria hoje.
+    POST /api/apagar-dados/  { escopo, confirmacao: "APAGAR" } -> faz uma cópia de segurança e apaga.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response([
+            {"id": k, "titulo": e["titulo"], "descricao": e["descricao"], "resumo": e["contar"]()}
+            for k, e in ESCOPOS.items()
+        ])
+
+    def post(self, request):
+        escopo = ESCOPOS.get(request.data.get("escopo"))
+        if escopo is None:
+            return erro("Escolha o que apagar.")
+        if str(request.data.get("confirmacao", "")).strip().upper() != "APAGAR":
+            return erro("Digite APAGAR para confirmar.")
+        backup = copia_de_seguranca()
+        with transaction.atomic():
+            escopo["apagar"]()
+        return Response({"detail": f"Dados apagados: {escopo['titulo']}.", "backup": backup})
+
+
+class ImpactoRotaView(APIView):
+    """GET /api/rotas/<n>/impacto/ -- o que seria apagado ao excluir a rota."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, numero):
+        rota = Rota.objects.filter(numero=numero).first()
+        return erro("Rota não encontrada.", 404) if rota is None else Response(impacto_rota(rota))
+
+
+class ExcluirRotaView(APIView):
+    """POST /api/rotas/<n>/excluir/ { modo: "so_rota" | "tudo", confirmacao: "APAGAR" }"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, numero):
+        rota = Rota.objects.filter(numero=numero).first()
+        if rota is None:
+            return erro("Rota não encontrada.", 404)
+        modo = request.data.get("modo")
+        if modo not in ("so_rota", "tudo"):
+            return erro("Escolha se quer excluir só a rota ou a rota e tudo dela.")
+        if str(request.data.get("confirmacao", "")).strip().upper() != "APAGAR":
+            return erro("Digite APAGAR para confirmar.")
+        backup = copia_de_seguranca()
+        excluir_rota(rota, modo)
+        return Response({"detail": f"Rota {numero} excluída.", "backup": backup})
+
+
+class ImpactoLocalView(APIView):
+    """GET /api/locais/<id>/impacto/"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        local = LocalVotacao.objects.filter(pk=pk).first()
+        return erro("Local não encontrado.", 404) if local is None else Response(impacto_local(local))
+
+
+class ExcluirLocalView(APIView):
+    """POST /api/locais/<id>/excluir/ { confirmacao: "APAGAR" }"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        local = LocalVotacao.objects.filter(pk=pk).first()
+        if local is None:
+            return erro("Local não encontrado.", 404)
+        if str(request.data.get("confirmacao", "")).strip().upper() != "APAGAR":
+            return erro("Digite APAGAR para confirmar.")
+        backup = copia_de_seguranca()
+        nome = local.nome
+        excluir_local(local)
+        return Response({"detail": f"Local excluído: {nome}.", "backup": backup})

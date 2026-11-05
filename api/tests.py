@@ -83,7 +83,7 @@ class CartorioTests(BaseTest):
     def test_painel_resumo_e_filtro(self):
         self.campo.post("/api/confirmar/", {"patrimonio": "2012345", "nome": "Maria"})
         r = self.admin.get("/api/painel/")
-        self.assertEqual((r.data["resumo"]["total"], r.data["resumo"]["entregue"], r.data["resumo"]["em_transito"]), (2, 1, 1))
+        self.assertEqual((r.data["resumo"]["total"], r.data["resumo"]["entregue"], r.data["resumo"]["aguardando"]), (2, 1, 1))
         r = self.admin.get("/api/painel/", {"status": "entregue"})
         self.assertEqual(len(r.data["entregas"]), 1)
         self.assertEqual(r.data["entregas"][0]["recebido_por"], "Maria")
@@ -344,3 +344,194 @@ class EdicaoTests(APITestCase):
         self.assertEqual(self.admin.patch("/api/rotas/99/", {"placa": "x"}, format="json").status_code, 404)
         self.admin.patch("/api/rotas/7/", {"responsavel": "Outro"}, format="json")
         self.assertEqual(Rota.objects.get(numero=7).placa, "BCI8G97")  # campo não enviado fica igual
+
+
+# ---------- Situação por horário de saída e apagar dados ----------
+import shutil
+from django.test import override_settings
+
+
+class SituacaoTests(APITestCase):
+    def setUp(self):
+        user = User.objects.create_user("cartorio", password="x")
+        self.admin = APIClient()
+        self.admin.credentials(HTTP_AUTHORIZATION="Token " + Token.objects.create(user=user).key)
+        with open(PLANILHA_REAL, "rb") as f:
+            self.admin.post("/api/importar-locais/", {"arquivo": f}, format="multipart")
+        for pat, sec in (("A1", 1), ("B1", 20), ("C1", 55)):
+            self.admin.post("/api/urnas/associar/", {"patrimonio": pat, "zona": 47, "secao": sec})
+
+    def agendar(self, trecho, dia, hora="08:00"):
+        LocalVotacao.objects.filter(nome__contains=trecho).update(
+            data_entrega=dia, hora_saida=_dt.time.fromisoformat(hora))
+
+    def situacoes(self, **filtros):
+        return {e["patrimonio"]: e["status"] for e in self.admin.get("/api/painel/", filtros).data["entregas"]}
+
+    def test_sem_horario_ou_antes_da_saida_fica_aguardando(self):
+        hoje = _tz.localdate()
+        self.agendar("MAURA", hoje + _dt.timedelta(days=1))   # saída amanhã
+        # B1 (Heriberto): sem data/horário definidos
+        self.assertEqual(self.situacoes(), {"A1": "aguardando", "B1": "aguardando", "C1": "aguardando"})
+
+    def test_depois_da_saida_vira_em_transito(self):
+        hoje = _tz.localdate()
+        self.agendar("MAURA", hoje - _dt.timedelta(days=1))   # saiu ontem
+        s = self.situacoes()
+        self.assertEqual((s["A1"], s["B1"]), ("em_transito", "aguardando"))
+
+    def test_data_sem_horario_de_saida_nao_inicia(self):
+        LocalVotacao.objects.filter(nome__contains="MAURA").update(data_entrega=_tz.localdate() - _dt.timedelta(days=1), hora_saida=None)
+        self.assertEqual(self.situacoes()["A1"], "aguardando")
+
+    def test_confirmada_fica_entregue_mesmo_antes_da_saida(self):
+        self.agendar("MAURA", _tz.localdate() + _dt.timedelta(days=1))
+        APIClient().post("/api/confirmar/", {"patrimonio": "A1", "nome": "Denize"})
+        self.assertEqual(self.situacoes()["A1"], "entregue")
+
+    def test_resumo_e_filtro_usam_a_situacao_calculada(self):
+        self.agendar("MAURA", _tz.localdate() - _dt.timedelta(days=1))
+        r = self.admin.get("/api/painel/").data["resumo"]
+        self.assertEqual((r["total"], r["em_transito"], r["aguardando"], r["entregue"], r["pendencia"]), (3, 1, 2, 0, 0))
+        self.assertEqual(list(self.situacoes(status="em_transito")), ["A1"])
+        self.assertEqual(sorted(self.situacoes(status="aguardando")), ["B1", "C1"])
+        self.assertEqual(self.admin.get("/api/painel/", {"status": "aguardando"}).data["resumo"]["total"], 3)  # resumo não muda com o filtro
+
+
+class ApagarDadosTests(APITestCase):
+    def setUp(self):
+        self.pasta = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.pasta, ignore_errors=True)
+        user = User.objects.create_user("cartorio", password="x")
+        self.admin = APIClient()
+        self.admin.credentials(HTTP_AUTHORIZATION="Token " + Token.objects.create(user=user).key)
+        with open(PLANILHA_REAL, "rb") as f:
+            self.admin.post("/api/importar-locais/", {"arquivo": f}, format="multipart")
+        LocalVotacao.objects.filter(nome__contains="MAURA").update(presidente="Denize", presidente_telefone="1", hora_saida=_dt.time(8, 0))
+        Rota.objects.filter(numero=7).update(responsavel="Celia")
+        self.admin.post("/api/urnas/associar/", {"patrimonio": "A1", "zona": 47, "secao": 1})
+        APIClient().post("/api/confirmar/", {"patrimonio": "A1", "nome": "Denize"})
+        APIClient().post("/api/ocorrencias/", {"patrimonio": "A1", "tipo": "avaria"})
+
+    def apagar(self, escopo, confirmacao="APAGAR"):
+        with override_settings(BACKUP_DIR=self.pasta):
+            return self.admin.post("/api/apagar-dados/", {"escopo": escopo, "confirmacao": confirmacao}, format="json")
+
+    def test_lista_o_que_cada_opcao_apagaria(self):
+        r = self.admin.get("/api/apagar-dados/")
+        d = {x["id"]: x["resumo"] for x in r.data}
+        self.assertEqual(set(d), {"confirmacoes", "urnas", "presidentes", "tudo"})
+        self.assertIn("1 urna", d["urnas"]); self.assertIn("74 seções", d["tudo"]); self.assertIn("1 local com dados", d["presidentes"])
+
+    def test_exige_login_e_confirmacao(self):
+        self.assertEqual(APIClient().get("/api/apagar-dados/").status_code, 401)
+        self.assertEqual(APIClient().post("/api/apagar-dados/", {"escopo": "tudo", "confirmacao": "APAGAR"}, format="json").status_code, 401)
+        self.assertEqual(self.apagar("tudo", confirmacao="").status_code, 400)
+        self.assertEqual(self.apagar("tudo", confirmacao="sim").status_code, 400)
+        self.assertEqual(self.apagar("inexistente").status_code, 400)
+        self.assertEqual((Urna.objects.count(), Secao.objects.count()), (1, 74))   # nada foi apagado
+        self.assertEqual(len(os.listdir(self.pasta)), 0)                              # nem backup
+
+    def test_confirmacoes_desfaz_mas_mantem_urnas(self):
+        r = self.apagar("confirmacoes")
+        self.assertEqual(r.status_code, 200)
+        e = Entrega.objects.get()
+        self.assertEqual((e.status, e.recebido_por, e.confirmado_em, Ocorrencia.objects.count(), Urna.objects.count()), ("em_transito", "", None, 0, 1))
+
+    def test_urnas_apaga_urnas_e_mantem_locais(self):
+        self.apagar("urnas")
+        self.assertEqual((Urna.objects.count(), Entrega.objects.count(), Ocorrencia.objects.count(), Secao.objects.count(), LocalVotacao.objects.count()), (0, 0, 0, 74, 17))
+
+    def test_presidentes_limpa_so_os_dados_dos_locais(self):
+        self.apagar("presidentes")
+        l = LocalVotacao.objects.get(nome__contains="MAURA")
+        self.assertEqual((l.presidente, l.presidente_telefone, l.hora_saida), ("", "", None))
+        self.assertEqual((Urna.objects.count(), Rota.objects.get(numero=7).responsavel), (1, "Celia"))
+
+    def test_tudo_apaga_planilha_mas_preserva_municipios_e_usuarios(self):
+        r = self.apagar("tudo")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual([Urna.objects.count(), Entrega.objects.count(), Ocorrencia.objects.count(), Secao.objects.count(), Rota.objects.count(), LocalVotacao.objects.count()], [0] * 6)
+        self.assertEqual((Municipio.objects.count(), User.objects.count()), (5, 1))
+
+    def test_faz_copia_de_seguranca_antes_de_apagar(self):
+        r = self.apagar("tudo")
+        arquivos = os.listdir(self.pasta)
+        self.assertEqual(arquivos, [r.data["backup"]])
+        import sqlite3
+        c = sqlite3.connect(os.path.join(self.pasta, arquivos[0]))
+        self.assertEqual(c.execute("select count(*) from api_secao").fetchone()[0], 74)   # a cópia ainda tem os dados
+        c.close()
+
+    def test_duas_operacoes_seguidas_geram_copias_diferentes(self):
+        a = self.apagar("confirmacoes").data["backup"]
+        b = self.apagar("confirmacoes").data["backup"]
+        self.assertNotEqual(a, b)
+        self.assertEqual(len(os.listdir(self.pasta)), 2)
+
+
+# ---------- Excluir rota e excluir local ----------
+class ExcluirRotaLocalTests(APITestCase):
+    def setUp(self):
+        self.pasta = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.pasta, ignore_errors=True)
+        user = User.objects.create_user("cartorio", password="x")
+        self.admin = APIClient()
+        self.admin.credentials(HTTP_AUTHORIZATION="Token " + Token.objects.create(user=user).key)
+        with open(PLANILHA_REAL, "rb") as f:
+            self.admin.post("/api/importar-locais/", {"arquivo": f}, format="multipart")
+        for pat, sec in (("A1", 1), ("A2", 2), ("B1", 20)):   # 1 e 2: rota 7 (Maura); 20: rota 6 (Heriberto)
+            self.admin.post("/api/urnas/associar/", {"patrimonio": pat, "zona": 47, "secao": sec})
+        APIClient().post("/api/confirmar/", {"patrimonio": "A1", "nome": "Denize"})
+        APIClient().post("/api/ocorrencias/", {"patrimonio": "A1", "tipo": "avaria"})
+
+    def post(self, caminho, dados=None):
+        with override_settings(BACKUP_DIR=self.pasta):
+            return self.admin.post(caminho, dados or {}, format="json")
+
+    def test_impacto_da_rota(self):
+        d = self.admin.get("/api/rotas/7/impacto/").data
+        self.assertEqual((d["secoes"], d["locais"], d["urnas"], d["ocorrencias"], d["confirmadas"]), (8, 1, 2, 1, 1))
+        self.assertEqual(self.admin.get("/api/rotas/99/impacto/").status_code, 404)
+
+    def test_so_a_rota_deixa_secoes_sem_rota_e_mantem_urnas(self):
+        r = self.post("/api/rotas/7/excluir/", {"modo": "so_rota", "confirmacao": "APAGAR"})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Rota.objects.filter(numero=7).exists())
+        self.assertEqual((Secao.objects.count(), Secao.objects.filter(rota__isnull=True).count(), LocalVotacao.objects.count(), Urna.objects.count()), (74, 8, 17, 3))
+
+    def test_rota_e_tudo_dela_preserva_as_outras_rotas(self):
+        r = self.post("/api/rotas/7/excluir/", {"modo": "tudo", "confirmacao": "APAGAR"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual((Secao.objects.count(), LocalVotacao.objects.count(), Rota.objects.count()), (66, 16, 7))
+        self.assertEqual(list(Urna.objects.values_list("patrimonio", flat=True)), ["B1"])
+        self.assertEqual((Entrega.objects.count(), Ocorrencia.objects.count()), (1, 0))
+
+    def test_local_com_secoes_em_outra_rota_nao_e_apagado(self):
+        Secao.objects.filter(zona=47, numero=5).update(rota=Rota.objects.get(numero=1))   # seção 5 da Maura vai para a rota 1
+        self.assertEqual(self.admin.get("/api/rotas/7/impacto/").data["locais"], 0)
+        self.post("/api/rotas/7/excluir/", {"modo": "tudo", "confirmacao": "APAGAR"})
+        self.assertTrue(LocalVotacao.objects.filter(nome__contains="MAURA").exists())
+        self.assertEqual(Secao.objects.filter(local__nome__contains="MAURA").count(), 1)     # só a 5 sobrou
+        self.assertEqual(Secao.objects.count(), 67)
+
+    def test_exige_confirmacao_modo_valido_e_login(self):
+        self.assertEqual(self.post("/api/rotas/7/excluir/", {"modo": "tudo"}).status_code, 400)
+        self.assertEqual(self.post("/api/rotas/7/excluir/", {"modo": "tudo", "confirmacao": "sim"}).status_code, 400)
+        self.assertEqual(self.post("/api/rotas/7/excluir/", {"modo": "outro", "confirmacao": "APAGAR"}).status_code, 400)
+        self.assertEqual(self.post("/api/rotas/99/excluir/", {"modo": "tudo", "confirmacao": "APAGAR"}).status_code, 404)
+        self.assertEqual(APIClient().post("/api/rotas/7/excluir/", {"modo": "tudo", "confirmacao": "APAGAR"}, format="json").status_code, 401)
+        self.assertEqual((Rota.objects.count(), Secao.objects.count(), len(os.listdir(self.pasta))), (8, 74, 0))
+
+    def test_excluir_local_apaga_secoes_e_urnas_dele(self):
+        local = LocalVotacao.objects.get(nome__contains="MAURA")
+        d = self.admin.get(f"/api/locais/{local.id}/impacto/").data
+        self.assertEqual((d["secoes"], d["urnas"]), (8, 2))
+        self.assertEqual(self.post(f"/api/locais/{local.id}/excluir/", {"confirmacao": "x"}).status_code, 400)
+        r = self.post(f"/api/locais/{local.id}/excluir/", {"confirmacao": "APAGAR"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual((LocalVotacao.objects.count(), Secao.objects.count(), list(Urna.objects.values_list("patrimonio", flat=True))), (16, 66, ["B1"]))
+
+    def test_faz_copia_de_seguranca(self):
+        r = self.post("/api/rotas/7/excluir/", {"modo": "so_rota", "confirmacao": "APAGAR"})
+        self.assertEqual(os.listdir(self.pasta), [r.data["backup"]])

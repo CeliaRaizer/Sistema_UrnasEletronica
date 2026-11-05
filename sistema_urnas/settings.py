@@ -174,3 +174,7 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+
+# Cópias de segurança automáticas feitas antes de apagar dados (ficam ao lado do banco).
+BACKUP_DIR = Path(os.environ.get('DJANGO_BACKUP_DIR', Path(str(DATABASES['default']['NAME'])).parent / 'backups'))

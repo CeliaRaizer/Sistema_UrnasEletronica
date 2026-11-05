@@ -180,3 +180,46 @@ td small{ display: block; color: #777; font-size: 12.5px; margin-top: 2px; }
 .rota-resp .botao-link{ margin-left: 12px; }
 .linha-form td{ background: #FBF9F1; padding: 10px 14px; }
 .local > .botao-link{ align-self: flex-start; }
+
+/* Aguardando saída (ainda antes do horário previsto de partida) */
+.resumo-numeros .n-aguardando strong{ color: #5F5E5A; }
+.b-aguardando{ background: #B4B2A9; }
+.selo-aguardando{ background: #ECEBE6; color: #4A4945; }
+
+/* Apagar dados */
+.zona-risco{ border-top: 1px solid #E0E0DC; padding-top: 26px; max-width: 820px; }
+.opcoes-apagar{ list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.opcoes-apagar li{ background: #fff; border: 1px solid #E0E0DC; border-left: 4px solid #B23B2E; padding: 14px 18px; }
+.opcao-topo{ display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.opcoes-apagar h3{ font-size: 15px; margin: 0 0 4px; }
+.opcoes-apagar p{ margin: 0 0 4px; font-size: 13.5px; color: #555; line-height: 1.5; }
+.opcao-hoje span{ font-weight: 600; color: #444; }
+.botao-perigo, .botao-perigo-sec{ font: inherit; font-size: 14px; padding: 9px 16px; border-radius: 2px; cursor: pointer; white-space: nowrap; }
+.botao-perigo{ background: #B23B2E; color: #fff; border: 1px solid #B23B2E; }
+.botao-perigo:disabled{ opacity: .4; cursor: default; }
+.botao-perigo-sec{ background: #fff; color: #8E2A1F; border: 1px solid #B23B2E; }
+.botao-perigo-sec:hover:not(:disabled){ background: #FBEAE7; }
+.botao-perigo-sec:disabled{ opacity: .4; cursor: default; border-color: #BDBDBD; color: #777; }
+.confirmar-apagar{ display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #ECECE8; }
+.confirmar-apagar label{ display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: #444; }
+.confirmar-apagar input{ font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid #BDBDBD; border-radius: 2px; max-width: 260px; }
+.confirmar-apagar .form-acoes{ justify-content: flex-start; }
+.confirmar-apagar .alerta-erro-claro{ margin: 0; }
+@media (max-width: 820px){ .opcao-topo{ flex-direction: column; } }
+
+/* Excluir rota / local */
+.botao-link.perigo{ color: #8E2A1F; }
+.rota-resp .botao-link.perigo{ margin-left: 14px; }
+.acoes-linha{ white-space: nowrap; }
+.acoes-linha .botao-link{ display: block; margin-bottom: 6px; }
+.excluir-painel{ background: #FDF3F1; border: 1px solid #E8C4BD; border-left: 4px solid #B23B2E; padding: 14px 18px; }
+.excluir-painel h3{ font-size: 15px; margin: 0 0 8px; }
+.excluir-painel p{ margin: 0 0 8px; font-size: 14px; line-height: 1.5; }
+.ajuda-pequena{ font-size: 13px !important; color: #666; }
+.aviso-forte{ color: #8E2A1F; }
+.modos{ border: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.modos legend{ font-size: 13px; font-weight: 600; color: #444; padding: 0; margin-bottom: 6px; }
+.modo{ display: flex; gap: 10px; align-items: flex-start; background: #fff; border: 1px solid #D8D8D2; padding: 10px 12px; cursor: pointer; font-size: 14px; line-height: 1.45; }
+.modo.ativo{ border-color: #B23B2E; background: #FFF8F6; }
+.modo strong{ display: block; }
+.modo input{ margin-top: 3px; }

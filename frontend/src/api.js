@@ -129,3 +129,24 @@ const patch = (token, caminho, corpo) =>
   });
 export const editarLocal = (token, id, dados) => patch(token, `/locais/${id}/`, dados);
 export const editarRota = (token, numero, dados) => patch(token, `/rotas/${numero}/`, dados);
+
+export const getApagar = (token) => chamar(token, "/apagar-dados/");
+export const apagarDados = (token, escopo, confirmacao) =>
+  chamar(token, "/apagar-dados/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ escopo, confirmacao }),
+  });
+
+export const getImpactoRota = (token, numero) => chamar(token, `/rotas/${numero}/impacto/`);
+export const excluirRota = (token, numero, modo, confirmacao) =>
+  chamar(token, `/rotas/${numero}/excluir/`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ modo, confirmacao }),
+  });
+export const getImpactoLocal = (token, id) => chamar(token, `/locais/${id}/impacto/`);
+export const excluirLocal = (token, id, confirmacao) =>
+  chamar(token, `/locais/${id}/excluir/`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirmacao }),
+  });

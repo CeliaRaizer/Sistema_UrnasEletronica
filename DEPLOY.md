@@ -94,6 +94,19 @@ Instale Docker no servidor, copie o projeto, crie o `.env` (com o seu domínio e
 
 ---
 
+## Cópias de segurança automáticas
+
+Quando alguém usa **Importar planilhas → 3. Apagar dados**, o sistema salva antes uma cópia do banco em `/dados/backups/` (as 10 mais recentes ficam). Para trazer uma cópia para o seu computador:
+```
+docker compose cp web:/dados/backups/NOME-DO-ARQUIVO.sqlite3 .\
+```
+Para **restaurar** uma cópia (substitui os dados atuais):
+```
+docker compose cp .\NOME-DO-ARQUIVO.sqlite3 web:/dados/db.sqlite3
+docker compose exec -u root web chown app /dados/db.sqlite3
+docker compose restart web
+```
+
 ## Segurança (leia antes de abrir o link na internet)
 
 - Use **senha forte**; o endereço do túnel é público e o `/admin/` também fica acessível por ele.

@@ -13,7 +13,12 @@ urlpatterns = [
     path("ocorrencias/", v.OcorrenciaView.as_view()),
     # cartório (com login)
     path("locais/<int:pk>/", v.EditarLocalView.as_view()),
+    path("locais/<int:pk>/impacto/", v.ImpactoLocalView.as_view()),
+    path("locais/<int:pk>/excluir/", v.ExcluirLocalView.as_view()),
     path("rotas/<int:numero>/", v.EditarRotaView.as_view()),
+    path("rotas/<int:numero>/impacto/", v.ImpactoRotaView.as_view()),
+    path("rotas/<int:numero>/excluir/", v.ExcluirRotaView.as_view()),
+    path("apagar-dados/", v.ApagarDadosView.as_view()),
     path("painel/", v.PainelView.as_view()),
     path("ocorrencias/lista/", v.OcorrenciasListaView.as_view()),
     path("importar/", v.ImportarPlanilhaView.as_view()),

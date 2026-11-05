@@ -9,6 +9,7 @@ vite.log
 # Segredos e dados de produção
 /.env
 staticfiles/
+backups/
 
 *.sqlite3
 .vscode/
